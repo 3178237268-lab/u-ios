@@ -8574,7 +8574,18 @@ void main() {
   var SRV_TOKEN_KEY = 'u-server-token';
   var SRV_USER_KEY = 'u-server-user';
   /* 默认后台服务器：进入 App 自动接入，设置里仍可手动改地址 */
-  var SRV_DEFAULT = 'http://192.168.137.1:8787';
+  /* 通过局域网地址 / 反代端口打开时，默认就用「当前页面同源」当服务器地址
+     （serve-app.js 会把 /api 与 /media 转发到 8787），这样手机上不用手填地址。
+     用 127.0.0.1 / 本机 8765 打开时仍回落到热点网关地址。 */
+  var SRV_DEFAULT = (function () {
+    try {
+      if ((location.protocol === 'http:' || location.protocol === 'https:') && location.hostname &&
+          location.hostname !== '127.0.0.1' && location.hostname !== 'localhost' && location.port !== '8787') {
+        return location.origin;
+      }
+    } catch (e) { }
+    return 'http://192.168.137.1:8787';
+  })();
 
   /* 单帖媒体数量上限：由后台「站点设置」下发（默认 9，最高 9）。
      先读本地缓存，/api/config 回来后用 applyMediaMax 覆盖。 */
@@ -8617,6 +8628,26 @@ void main() {
     if (SS.getItem(SRV_OFF_KEY) === '1') return '';
     if (LS.getItem(SRV_OFF_KEY) === '1') LS.removeItem(SRV_OFF_KEY);
     return (LS.getItem(SRV_KEY) || SRV_DEFAULT).replace(/\/+$/, '');
+  }
+  /* 手机走局域网地址 / 路由器转发时，默认的 192.168.137.1:8787 往往不可达：
+     启动后探测一次，失败就切到「当前页面同源」——serve-app.js 会把 /api 与 /media
+     反向代理到 8787，所以一个端口就能把 App 跑起来。同一地址只试一次，避免刷新循环。 */
+  function srvSelfHeal() {
+    try {
+      if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
+      if (!Srv.on()) return;
+      var origin = location.origin;
+      if (SS.getItem('u-srv-heal') === origin) return;
+      var cur = srvBase();
+      Srv.ping().then(function () { }, function () {
+        if (origin === cur) return;
+        SS.setItem('u-srv-heal', origin);
+        LS.setItem(SRV_KEY, origin);
+        LS.removeItem(SRV_OFF_KEY);
+        toast('正在连接 ' + origin.replace(/^https?:\/\//, ''));
+        setTimeout(function () { location.reload(); }, 900);
+      });
+    } catch (e) { }
   }
   function setSrvOff() {
     SS.setItem(SRV_OFF_KEY, '1');
@@ -11723,8 +11754,9 @@ void main() {
       .catch(function () { renderApiSheet(null); });
   }
   function renderApiSheet(info) {
-    var ip = info && info.ip ? info.ip : '当前手机局域网 IP';
-    var port = info && info.port ? info.port : 17880;
+    /* 浏览器里没有原生 /lan/info（那是安卓壳的接口），直接用当前页面地址，别显示占位串 */
+    var ip = (info && info.ip) || location.hostname || '当前手机局域网 IP';
+    var port = (info && info.port) || location.port || 17880;
     var base = 'http://' + ip + ':' + port;
     var pageUrl = base + '/index.html';
     var dir = info && info.dir ? info.dir : 'Android/data/com.trae.u/files/lan';
@@ -12784,6 +12816,7 @@ void main() {
     return false;
   }
   netBind();
+  setTimeout(srvSelfHeal, 1600);
 
   /* ---------------- confirm ---------------- */
   var confirmResolve = null;
