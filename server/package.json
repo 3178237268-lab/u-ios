@@ -1,0 +1,13 @@
+{
+  "name": "u-server",
+  "version": "1.6.0",
+  "private": true,
+  "description": "U 社交 App 后台服务器（Node.js + SQLite + 网页管理台）",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
+}

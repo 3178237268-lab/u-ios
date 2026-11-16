@@ -1,0 +1,40 @@
+const {chromium}=require('playwright-core'); const http=require('http'); const fs=require('fs'); const path=require('path');
+const ROOT='D:/deepseek/gouzuoqu/U';
+const MIME={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.png':'image/png','.json':'application/json'};
+const srv=http.createServer((req,res)=>{ const u=decodeURIComponent(req.url.split('?')[0]); const p=path.join(ROOT, u==='/'?'index.html':u.replace(/^\//,''));
+  fs.readFile(p,(e,b)=>{ if(e){res.writeHead(404);res.end('no');return;} res.writeHead(200,{'content-type':MIME[path.extname(p)]||'application/octet-stream'}); res.end(b); }); });
+(async()=>{ await new Promise(r=>srv.listen(18875,'127.0.0.1',r));
+  const b=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,args:['--no-sandbox','--disable-gpu','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+  const page=await b.newPage({viewport:{width:420,height:900},deviceScaleFactor:2});
+  const errs=[]; page.on('pageerror',e=>errs.push(String(e).slice(0,150)));
+  await page.goto('http://127.0.0.1:18875/index.html',{waitUntil:'load',timeout:30000});
+  await page.waitForTimeout(1200);
+  await page.click('#guestBtn').catch(()=>{});
+  await page.waitForTimeout(1200);
+  await page.evaluate(()=>window.openTearGame&&window.openTearGame());
+  await page.waitForFunction(()=>window.tearState&&window.tearState().built,{timeout:20000}).catch(e=>errs.push('build timeout'));
+  await page.waitForTimeout(900);
+  await page.screenshot({path:'D:/deepseek/gouzuoqu/U/.tmp-test/tear2-open.png'});
+  const s1=await page.evaluate(()=>window.tearState());
+  const box=await page.evaluate(()=>{const s=document.getElementById('tearStage').getBoundingClientRect();return {x:s.x,y:s.y,w:s.width,h:s.height};});
+  for(let stroke=0;stroke<3;stroke++){
+    const y0=box.y+box.h*(0.35+stroke*0.12);
+    await page.mouse.move(box.x+box.w*0.22,y0); await page.mouse.down();
+    for(let i=0;i<26;i++){ await page.mouse.move(box.x+box.w*(0.22+i*0.022), y0+Math.sin(i/3)*box.h*0.05); await page.waitForTimeout(14);}
+    await page.mouse.up(); await page.waitForTimeout(120);
+  }
+  await page.waitForTimeout(600);
+  const s2=await page.evaluate(()=>window.tearState());
+  await page.screenshot({path:'D:/deepseek/gouzuoqu/U/.tmp-test/tear2-torn.png'});
+  await page.waitForFunction(()=>window.tearState().layer>1,{timeout:8000}).catch(e=>errs.push('no advance'));
+  const s3=await page.evaluate(()=>window.tearState());
+  await page.waitForTimeout(700);
+  await page.screenshot({path:'D:/deepseek/gouzuoqu/U/.tmp-test/tear2-next.png'});
+  await page.click('#tearReset'); await page.waitForTimeout(500);
+  const s4=await page.evaluate(()=>window.tearState());
+  await page.click('[data-tear-color=\"white\"]'); await page.waitForTimeout(400);
+  const s5=await page.evaluate(()=>window.tearState());
+  await page.screenshot({path:'D:/deepseek/gouzuoqu/U/.tmp-test/tear2-white.png'});
+  console.log(JSON.stringify({open:s1,layer1:s2,afterAdvance:s3,reset:s4,color:s5,errs,box}));
+  await b.close(); srv.close();
+})().catch(e=>{console.log('FATAL',e.message); process.exit(1);});

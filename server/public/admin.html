@@ -1,0 +1,1840 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>U 后台服务器</title>
+<style>
+:root{
+  --bg:#0b0b12; --card:rgba(23,23,32,.72); --card2:rgba(32,32,44,.7);
+  --line:rgba(255,255,255,.09); --text:#f2f2f7; --dim:#9696ac;
+  --accent:#8b5cf6; --pink:#f75b8e; --green:#18c090; --danger:#ff5c6c; --yellow:#ffd24d;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%;margin:0}
+body{
+  background:
+    radial-gradient(900px 600px at 12% -8%,rgba(139,92,246,.22),transparent 60%),
+    radial-gradient(800px 520px at 92% 4%,rgba(247,91,142,.14),transparent 55%),
+    var(--bg);
+  color:var(--text);font-family:-apple-system,"PingFang SC","Noto Sans SC","Helvetica Neue",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;padding-bottom:56px;
+}
+button{font-family:inherit;cursor:pointer}
+a{color:inherit}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:9px}
+
+.wrap{max-width:1180px;margin:0 auto;padding:24px 20px 40px}
+header.top{display:flex;align-items:center;gap:14px;margin-bottom:22px;flex-wrap:wrap}
+.logo{
+  width:46px;height:46px;border-radius:14px;background:#000;color:#fff;display:grid;place-items:center;
+  font-size:24px;font-weight:800;letter-spacing:1px;border:1px solid rgba(255,255,255,.1);
+  box-shadow:0 10px 30px rgba(0,0,0,.45);
+}
+.titles h1{margin:0;font-size:20px;font-weight:800;letter-spacing:.3px}
+.titles p{margin:3px 0 0;font-size:12.5px;color:var(--dim)}
+.spacer{flex:1}
+.pill{
+  display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:999px;
+  background:var(--card);border:1px solid var(--line);font-size:12.5px;font-weight:700;color:var(--dim);
+  -webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);
+}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green)}
+.btn{
+  border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:12px;
+  padding:9px 15px;font-size:13px;font-weight:700;
+  -webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);
+  transition:transform .35s cubic-bezier(.22,1.35,.36,1),background .2s,border-color .2s;
+}
+.btn:active{transform:scale(.94)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn:hover{border-color:rgba(139,92,246,.5)}
+.btn.primary{
+  background:linear-gradient(135deg,#8b5cf6,#6d4aff);border-color:transparent;
+  box-shadow:0 10px 26px rgba(109,74,255,.35);
+}
+.btn.danger{color:#ffd7db;border-color:rgba(255,92,108,.35);background:rgba(255,92,108,.12)}
+.btn.ghost{background:transparent}
+.btn.sm{padding:6px 11px;font-size:12px;border-radius:10px}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:12px;margin-bottom:18px}
+.stat{
+  background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px 17px;
+  -webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);
+  box-shadow:0 10px 30px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.06);
+}
+.stat .k{font-size:12px;color:var(--dim);font-weight:700;letter-spacing:.3px}
+.stat .v{font-size:26px;font-weight:800;margin-top:8px;letter-spacing:.5px}
+.stat .s{font-size:11.5px;color:var(--dim);margin-top:6px}
+
+.panel{
+  background:var(--card);border:1px solid var(--line);border-radius:20px;
+  -webkit-backdrop-filter:blur(20px) saturate(160%);backdrop-filter:blur(20px) saturate(160%);
+  box-shadow:0 14px 40px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.05);
+  overflow:hidden;
+}
+.panel-head{display:flex;align-items:center;gap:12px;padding:15px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.panel-head h2{margin:0;font-size:15px;font-weight:800}
+.panel-body{padding:16px 18px}
+
+.tabs{display:flex;gap:6px;padding:6px;background:rgba(255,255,255,.04);border-radius:14px;border:1px solid var(--line);margin-bottom:18px;width:max-content;max-width:100%;overflow:auto}
+.tab{border:0;background:transparent;color:var(--dim);padding:9px 18px;border-radius:10px;font-size:13.5px;font-weight:700;transition:background .2s,color .2s,transform .35s cubic-bezier(.22,1.35,.36,1)}
+.tab:active{transform:scale(.94)}
+.tab.on{background:linear-gradient(135deg,rgba(139,92,246,.9),rgba(109,74,255,.9));color:#fff;box-shadow:0 8px 22px rgba(109,74,255,.28)}
+
+.kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px 22px;font-size:13px}
+.kv .row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px dashed rgba(255,255,255,.06)}
+.kv .row span:first-child{color:var(--dim)}
+.kv .row span:last-child{font-weight:700;font-variant-numeric:tabular-nums;text-align:right;word-break:break-all}
+.data-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.data-actions .btn{flex:1;min-width:160px;justify-content:center;padding:11px 16px}
+.data-hint{margin:12px 0 0;font-size:12px;line-height:1.6;color:var(--dim)}
+
+/* 站点设置 */
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.field{display:flex;flex-direction:column;gap:7px;font-size:12.5px;color:var(--dim);font-weight:700}
+.field input,.admin-add input{
+  width:100%;padding:10px 12px;border-radius:11px;border:1px solid var(--line);
+  background:rgba(255,255,255,.04);color:var(--text);font-size:14px;outline:0;
+}
+.field input:focus,.admin-add input:focus{border-color:rgba(139,92,246,.6)}
+/* 人机频率：每 N 秒 M 条 双输入 */
+.rate-field{display:flex;flex-direction:column;gap:7px;font-size:12.5px;color:var(--dim);font-weight:700}
+.rate-field .rate-line{display:flex;align-items:center;gap:6px;color:var(--dim);font-size:12px;font-weight:700}
+.rate-field .rate-line input{width:100%;max-width:92px;padding:9px 10px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);font-size:14px;text-align:center;outline:0}
+.rate-field .rate-line input:focus{border-color:rgba(139,92,246,.6)}
+.switch-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px dashed rgba(255,255,255,.07)}
+.switch-row:last-child{border-bottom:0}
+.switch-row b{display:block;font-size:13.5px}
+.switch-row small{display:block;color:var(--dim);font-size:12px;margin-top:4px;line-height:1.5}
+.switch-row input{width:44px;height:25px;flex:0 0 auto;accent-color:#8b5cf6;cursor:pointer}
+.checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px}
+.checks label{display:flex;align-items:center;gap:9px;padding:11px 13px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.03);font-size:13px;font-weight:700;cursor:pointer}
+.checks input{width:17px;height:17px;accent-color:#8b5cf6}
+.admin-add{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;margin-top:14px;align-items:center}
+.admin-add .btn{height:39px;white-space:nowrap}
+.admin-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed rgba(255,255,255,.06);font-size:13px}
+.admin-item:last-child{border-bottom:0}
+.admin-item .muted{flex:1}
+@media(max-width:720px){.admin-add{grid-template-columns:1fr 1fr}}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--dim);font-size:11.5px;font-weight:800;letter-spacing:.4px;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:12px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+tbody tr{transition:background .18s}
+tbody tr:hover{background:rgba(255,255,255,.03)}
+.tbl-wrap{overflow-x:auto}
+.who{display:flex;align-items:center;gap:9px;min-width:150px}
+.av{
+  width:30px;height:30px;border-radius:11px;flex:0 0 auto;display:grid;place-items:center;
+  font-size:13px;font-weight:800;color:#fff;
+  background:linear-gradient(135deg,#8b5cf6,#f75b8e);
+}
+.who b{display:block;font-size:13px;line-height:1.2}
+.who small{color:var(--dim);font-size:11.5px}
+.tag{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:800;white-space:nowrap}
+.tag.ok{background:rgba(24,192,144,.14);color:#4fe3b8}
+.tag.ban{background:rgba(255,92,108,.16);color:#ff97a2}
+.tag.admin{background:rgba(139,92,246,.2);color:#c3aaff}
+.tag.priv{background:rgba(255,210,77,.14);color:#ffd977}
+
+/* 身份标签 chip */
+.role-chip{
+  display:inline-block;border-radius:999px;font-size:10.5px;font-weight:800;line-height:1.45;
+  padding:1px 6px;margin-left:6px;white-space:nowrap;vertical-align:middle;
+  border:1px solid transparent;letter-spacing:.2px;
+}
+.role-admin{background:rgba(139,92,246,.22);color:#c9b3ff;border-color:rgba(139,92,246,.45)}
+.role-user{background:rgba(110,140,190,.2);color:#a8c2e8;border-color:rgba(110,140,190,.42)}
+.role-guest{background:rgba(255,210,77,.16);color:#ffd977;border-color:rgba(255,210,77,.34)}
+.role-bot{background:rgba(24,192,144,.18);color:#4fe3b8;border-color:rgba(24,192,144,.4)}
+@media (prefers-color-scheme:light){
+  .role-admin{background:#e9e0ff;color:#4a2fa8;border-color:#c3aaff}
+  .role-user{background:#e3ecf8;color:#2c4a70;border-color:#a8c2e8}
+  .role-guest{background:#fff4cf;color:#6b5200;border-color:#ffd977}
+  .role-bot{background:#daf7ee;color:#0b6249;border-color:#4fe3b8}
+}
+
+/* 发布者身份筛选（胶囊按钮组） */
+.role-filter{
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  padding:10px 0 12px;border-bottom:1px dashed rgba(255,255,255,.07);margin-bottom:4px;
+}
+.role-filter .rf-label{font-size:12px;color:var(--dim);margin-right:2px;font-weight:700}
+.role-filter .rf-btn{
+  appearance:none;border:1px solid var(--line);background:rgba(255,255,255,.04);
+  color:#b9bad2;border-radius:999px;padding:5px 13px;font-size:12.5px;font-weight:700;
+  cursor:pointer;line-height:1.5;transition:background .15s,border-color .15s,color .15s;
+}
+.role-filter .rf-btn:hover{background:rgba(255,255,255,.08)}
+.role-filter .rf-btn.active{background:rgba(139,92,246,.25);border-color:rgba(139,92,246,.65);color:#d8c8ff}
+.role-filter .rf-count{margin-left:auto;font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
+@media (prefers-color-scheme:light){
+  .role-filter{border-bottom-color:rgba(0,0,0,.08)}
+  .role-filter .rf-btn{background:#fff;color:#4a4a60}
+  .role-filter .rf-btn.active{background:#e9e0ff;border-color:#b79bff;color:#4a2fa8}
+}
+
+/* 备份文件列表 */
+.backup-block{margin-top:16px;border-top:1px dashed rgba(255,255,255,.08);padding-top:4px}
+.backup-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 0 8px}
+.backup-head b{font-size:13px}
+#backupDir{font-size:11.5px;word-break:break-all}
+#backupList td{font-size:12.5px;white-space:nowrap}
+#backupList td:first-child{max-width:320px;overflow:hidden;text-overflow:ellipsis}
+#backupList td .bk-sub{display:block;font-size:11.5px;color:#9696ac;margin-top:2px}
+
+/* 浏览量编辑 */
+.view-input{
+  width:70px;padding:4px 7px;border-radius:9px;border:1px solid var(--line);
+  background:rgba(255,255,255,.05);color:var(--text);font-size:12.5px;text-align:right;
+  outline:0;font-variant-numeric:tabular-nums;
+}
+.view-input:focus{border-color:rgba(139,92,246,.6)}
+.muted{color:var(--dim)}
+.clip{max-width:430px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.actions{display:flex;gap:6px;justify-content:flex-end}
+.search{
+  display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border:1px solid var(--line);
+  border-radius:12px;padding:8px 12px;min-width:190px;
+}
+.search input{background:none;border:0;outline:0;color:var(--text);font-size:13px;width:100%}
+.search input::placeholder{color:#68687e}
+
+.empty{padding:38px 20px;text-align:center;color:var(--dim);font-size:13px}
+
+.endpoint{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px dashed rgba(255,255,255,.06);font-size:12.5px}
+.endpoint:last-child{border-bottom:0}
+.method{width:62px;flex:0 0 auto;text-align:center;padding:4px 0;border-radius:7px;font-size:11px;font-weight:800;letter-spacing:.3px}
+.method.GET{background:rgba(24,192,144,.16);color:#4fe3b8}
+.method.POST{background:rgba(139,92,246,.2);color:#c3aaff}
+.method.DELETE{background:rgba(255,92,108,.16);color:#ff97a2}
+.endpoint code{flex:1;color:#dcdef0;word-break:break-all}
+.endpoint span.desc{color:var(--dim);flex:0 0 auto;max-width:42%}
+
+/* 登录 */
+.login{
+  position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:24px;
+  background:radial-gradient(700px 500px at 30% 10%,rgba(139,92,246,.25),transparent 60%),rgba(8,8,14,.92);
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+}
+.login.hide{display:none}
+.login-card{
+  width:100%;max-width:380px;background:rgba(23,23,32,.85);border:1px solid var(--line);
+  border-radius:24px;padding:30px 26px;
+  box-shadow:0 30px 80px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.07);
+}
+.login-card .logo{margin:0 auto 16px}
+.login-card h2{margin:0;text-align:center;font-size:19px;font-weight:800}
+.login-card p{margin:7px 0 22px;text-align:center;font-size:12.5px;color:var(--dim)}
+.field{
+  width:100%;margin-bottom:11px;padding:13px 15px;border-radius:13px;font-size:14px;
+  background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--text);outline:0;
+}
+.field:focus{border-color:rgba(139,92,246,.6);background:rgba(139,92,246,.08)}
+.err{min-height:18px;margin:4px 0 10px;font-size:12px;color:#ff8b97;text-align:center}
+
+/* 弹层 */
+.toast{
+  position:fixed;left:50%;bottom:28px;transform:translate(-50%,20px);z-index:120;
+  background:rgba(28,28,40,.95);border:1px solid var(--line);color:var(--text);
+  padding:11px 20px;border-radius:999px;font-size:13px;font-weight:700;
+  opacity:0;pointer-events:none;transition:opacity .25s,transform .35s cubic-bezier(.22,1.35,.36,1);
+  box-shadow:0 16px 40px rgba(0,0,0,.45);
+}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.modal{position:fixed;inset:0;z-index:110;display:grid;place-items:center;padding:24px;background:rgba(5,5,10,.65);opacity:0;pointer-events:none;transition:opacity .2s}
+.modal.show{opacity:1;pointer-events:auto}
+.modal-card{
+  width:100%;max-width:360px;background:#1a1a26;border:1px solid var(--line);border-radius:20px;padding:24px;
+  box-shadow:0 30px 80px rgba(0,0,0,.6);
+}
+.modal-card h3{margin:0 0 8px;font-size:16px}
+.modal-card p{margin:0 0 20px;font-size:13.5px;color:var(--dim);line-height:1.6}
+.modal-card .actions{justify-content:flex-end}
+</style>
+</head>
+<body>
+
+<div class="login hide" id="login">
+  <form class="login-card" id="loginForm" autocomplete="on">
+    <div class="logo">U</div>
+    <h2>后台服务器</h2>
+    <p>使用管理员账号登录</p>
+    <input class="field" id="lgUser" placeholder="管理员账号" autocomplete="username">
+    <input class="field" id="lgPass" type="password" placeholder="密码" autocomplete="current-password">
+    <div class="err" id="lgErr"></div>
+    <button class="btn primary" type="submit" style="width:100%;padding:13px">进入后台</button>
+  </form>
+</div>
+
+<div class="wrap">
+  <header class="top">
+    <div class="logo">U</div>
+    <div class="titles">
+      <h1>U 后台服务器</h1>
+      <p id="subline">加载中...</p>
+    </div>
+    <div class="spacer"></div>
+    <div class="pill"><span class="dot" id="healthDot"></span><span id="healthText">在线</span></div>
+    <button class="btn" id="refreshBtn">刷新</button>
+    <button class="btn ghost" id="logoutBtn">退出</button>
+  </header>
+
+  <div class="tabs">
+    <button class="tab on" data-tab="overview">概览</button>
+    <button class="tab" data-tab="settings">站点设置</button>
+    <button class="tab" data-tab="users">用户</button>
+    <button class="tab" data-tab="posts">帖子</button>
+    <button class="tab" data-tab="comments">评论</button>
+    <button class="tab" data-tab="media">媒体</button>
+    <button class="tab" data-tab="logs">日志</button>
+    <button class="tab" data-tab="history">修改记录</button>
+    <button class="tab" data-tab="api">接口</button>
+  </div>
+
+  <section id="view-overview">
+    <div class="stats" id="statCards"></div>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>服务器状态</h2>
+        <div class="spacer"></div>
+        <button class="btn sm" id="exportBtn">导出数据</button>
+      </div>
+      <div class="panel-body"><div class="kv" id="serverKv"></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>数据管理</h2>
+        <div class="spacer"></div>
+        <button class="btn sm" id="backupNowBtn">立即备份</button>
+      </div>
+      <div class="panel-body">
+        <div class="kv" id="backupKv"></div>
+        <div class="data-actions">
+          <button class="btn danger" id="clearAppDataBtn">清除 App 全部数据</button>
+          <button class="btn" id="restoreAppDataBtn">恢复数据</button>
+        </div>
+        <p class="data-hint">每次备份都是一份完整快照：数据库 + 全部图片与视频，放在单独的目录里，可随时整份恢复。清除数据前也会自动备份一份。管理员账号不会被清除。</p>
+
+        <div class="backup-block">
+          <div class="backup-head">
+            <b>备份文件</b>
+            <span class="muted mono" id="backupDir">—</span>
+            <div class="spacer"></div>
+            <button class="btn sm" id="backupReload">刷新列表</button>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>文件名</th><th style="width:126px">大小</th><th style="width:140px">时间</th><th style="width:78px">类型</th><th style="width:152px">操作</th></tr></thead>
+              <tbody id="backupList"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-settings" style="display:none">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>数据目录（上传目录）</h2>
+        <div class="spacer"></div>
+        <button class="btn sm" id="dirReload">重新读取</button>
+      </div>
+      <div class="panel-body">
+        <div class="kv" id="dirKv"></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:14px">
+          <input class="field mono" id="dirInput" placeholder="例如 C:\Users\YeKi8\Desktop\11111\data" style="flex:1;min-width:280px;margin:0">
+          <button class="btn primary" id="dirSave">修改数据目录</button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+          <input class="field" id="dirNote" placeholder="备注（会写进修改记录，可留空）" style="flex:1;min-width:280px;margin:0">
+        </div>
+        <p class="data-hint">
+          数据库 u.db、上传的图片视频、自动备份都放在这个目录里。改完需要<b>重启服务器</b>才生效（不会搬迁旧数据，请先把旧目录里的
+          u.db 与 media 拷到新目录，或用「恢复数据」）。修改会记进「修改记录」。<br>
+          优先级：环境变量 <b class="mono">U_DATA_DIR</b> &gt; 配置文件 <b class="mono">data-dir.json</b> &gt; 默认 <b class="mono">server/data</b>。
+        </p>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>上传大小限制</h2><div class="spacer"></div><span class="muted" style="font-size:12px">App 与服务器同时生效</span></div>
+      <div class="panel-body">
+        <div class="settings-grid">
+          <label class="field"><span>图片上限（MB）</span><input id="setImageMB" type="number" min="1" max="500" step="1"></label>
+          <label class="field"><span>视频上限（MB）</span><input id="setVideoMB" type="number" min="1" max="2048" step="1"></label>
+          <label class="field"><span>单帖媒体上限（张/个）</span><input id="setMediaMaxPerPost" type="number" min="1" max="9" step="1" placeholder="1-9"></label>
+          <label class="field"><span>自动备份间隔（小时，0 关闭）</span><input id="setAutoBackupHours" type="number" min="0" max="168" step="1" placeholder="0-168"></label>
+          <label class="field"><span>备份保留份数</span><input id="setBackupKeep" type="number" min="1" max="20" step="1" placeholder="1-20"></label>
+        </div>
+        <p class="data-hint">超出上限的上传会被服务器直接拒绝；App 内选择文件时也会按这里的数值提前提示。</p>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>人机频率</h2><div class="spacer"></div><span class="muted" style="font-size:12px">每 N 秒生成 M 条，条数 0 表示关闭</span></div>
+      <div class="panel-body">
+        <div class="settings-grid">
+          <label class="rate-field"><span>人机发帖</span><span class="rate-line">每 <input id="setBotPostEvery" type="number" min="1" max="3600" step="1" value="20"> 秒 <input id="setBotPostRound" type="number" min="0" max="1000" step="1" value="0"> 条</span></label>
+          <label class="rate-field"><span>人机评论</span><span class="rate-line">每 <input id="setBotCommentEvery" type="number" min="1" max="3600" step="1" value="20"> 秒 <input id="setBotCommentRound" type="number" min="0" max="1000" step="1" value="0"> 条</span></label>
+          <label class="rate-field"><span>人机点赞</span><span class="rate-line">每 <input id="setBotLikeEvery" type="number" min="1" max="3600" step="1" value="20"> 秒 <input id="setBotLikeRound" type="number" min="0" max="1000" step="1" value="0"> 条</span></label>
+          <label class="rate-field"><span>人机私信</span><span class="rate-line">每 <input id="setBotDmEvery" type="number" min="1" max="3600" step="1" value="20"> 秒 <input id="setBotDmRound" type="number" min="0" max="1000" step="1" value="0"> 条</span></label>
+        </div>
+        <p class="data-hint">四类动作各自按「每 N 秒发 M 条」运行：N 填 1-3600 秒，M 填 0-1000 条，M 为 0 表示关掉这一类。服务器同时把设置换算成每秒速率下发，老版本 App 照旧工作。人机私信会随机发给最近活跃的真实用户，没有可发对象时自动跳过这一轮。</p>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>全站开关</h2></div>
+      <div class="panel-body">
+        <label class="switch-row">
+          <span><b>允许发帖</b><small>关闭后所有账号（含管理员）都不能发帖和转发</small></span>
+          <input id="setAllowPost" type="checkbox">
+        </label>
+        <label class="switch-row">
+          <span><b>允许评论</b><small>关闭后所有账号都不能发表评论</small></span>
+          <input id="setAllowComment" type="checkbox">
+        </label>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>服务菜单</h2><div class="spacer"></div><span class="muted" style="font-size:12px">取消勾选即在 App 内关闭入口</span></div>
+      <div class="panel-body"><div class="checks" id="serviceChecks"></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>管理员账号</h2>
+        <div class="spacer"></div>
+        <button class="btn sm primary" id="addAdminBtn">添加管理员</button>
+      </div>
+      <div class="panel-body">
+        <div id="adminList"></div>
+        <div class="admin-add" id="adminAddBox" style="display:none">
+          <input id="newAdminUser" placeholder="账号（2-24 位字母/数字/下划线）" autocomplete="off">
+          <input id="newAdminName" placeholder="昵称（可留空）" autocomplete="off">
+          <input id="newAdminPass" type="password" placeholder="密码（至少 6 位）" autocomplete="new-password">
+          <button class="btn primary sm" id="saveAdminBtn">创建</button>
+        </div>
+        <p class="data-hint">新管理员可直接登录管理台；已存在的普通账号填相同账号会被提升为管理员。至少保留一个管理员。</p>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px">
+      <button class="btn primary" id="saveSettingsBtn">保存全部设置</button>
+    </div>
+  </section>
+
+  <section id="view-users" style="display:none">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>用户管理</h2>
+        <button class="btn sm" id="userSelectAll">全选</button>
+        <button class="btn sm danger" id="userBulkDel">批量删除</button>
+        <div class="spacer"></div>
+        <div class="search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9696ac" stroke-width="2.2"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg>
+          <input id="userSearch" placeholder="搜索账号或昵称">
+        </div>
+      </div>
+      <div class="role-filter" id="userRoleFilter" data-scope="user">
+        <span class="rf-label">人物</span>
+        <button class="rf-btn active" data-role="">全部</button>
+        <button class="rf-btn" data-role="user">用户</button>
+        <button class="rf-btn" data-role="bot">人机</button>
+        <button class="rf-btn" data-role="guest">游客</button>
+        <button class="rf-btn" data-role="admin">管理员</button>
+        <span class="rf-count" id="userCount"></span>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th style="width:34px"><input type="checkbox" id="userCheckAll"></th><th>ID</th><th>用户</th><th>注册时间</th><th>帖子</th><th>状态</th><th style="text-align:right">操作</th></tr></thead>
+          <tbody id="userRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-posts" style="display:none">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>内容审核</h2>
+        <button class="btn sm" id="postSelectAll">全选</button>
+        <button class="btn sm danger" id="postBulkDel">批量删除</button>
+        <button class="btn sm danger" id="postClearAll">一键清空</button>
+        <div class="spacer"></div>
+        <div class="search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9696ac" stroke-width="2.2"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg>
+          <input id="postSearch" placeholder="搜索内容或作者">
+        </div>
+      </div>
+      <div class="role-filter" id="postRoleFilter" data-scope="post">
+        <span class="rf-label">发布者</span>
+        <button class="rf-btn active" data-role="">全部</button>
+        <button class="rf-btn" data-role="user">用户</button>
+        <button class="rf-btn" data-role="guest">游客</button>
+        <button class="rf-btn" data-role="bot">人机</button>
+        <button class="rf-btn" data-role="admin">管理员</button>
+        <span class="rf-count" id="postCount"></span>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th style="width:34px"><input type="checkbox" id="postCheckAll"></th><th>ID</th><th>作者</th><th>内容</th><th>媒体</th><th>互动</th><th style="width:130px">浏览量</th><th>时间</th><th style="text-align:right">操作</th></tr></thead>
+          <tbody id="postRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-comments" style="display:none">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>评论详情</h2>
+        <button class="btn sm" id="commentSelectAll">全选</button>
+        <button class="btn sm danger" id="commentBulkDel">批量删除</button>
+        <button class="btn sm danger" id="commentClearAll">一键清空</button>
+        <div class="spacer"></div>
+        <div class="search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9696ac" stroke-width="2.2"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg>
+          <input id="commentSearch" placeholder="搜索评论、作者或所属帖子">
+        </div>
+      </div>
+      <div class="role-filter" id="commentRoleFilter" data-scope="comment">
+        <span class="rf-label">发布者</span>
+        <button class="rf-btn active" data-role="">全部</button>
+        <button class="rf-btn" data-role="user">用户</button>
+        <button class="rf-btn" data-role="guest">游客</button>
+        <button class="rf-btn" data-role="bot">人机</button>
+        <button class="rf-btn" data-role="admin">管理员</button>
+        <span class="rf-count" id="commentCount"></span>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th style="width:34px"><input type="checkbox" id="commentCheckAll"></th><th>ID</th><th>评论作者</th><th>评论内容</th><th>所属帖子</th><th>时间</th><th style="text-align:right">操作</th></tr></thead>
+          <tbody id="commentRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-media" style="display:none">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>媒体文件（图片 / 视频）</h2>
+        <button class="btn sm" id="mediaSelectAll">全选</button>
+        <button class="btn sm danger" id="mediaBulkDel">批量删除</button>
+        <button class="btn sm danger" id="mediaClearAll">一键清空</button>
+        <div class="spacer"></div>
+        <div class="search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9696ac" stroke-width="2.2"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg>
+          <input id="mediaSearch" placeholder="搜索文件名或作者">
+        </div>
+      </div>
+      <div class="role-filter" id="mediaRoleFilter" data-scope="media">
+        <span class="rf-label">发布者</span>
+        <button class="rf-btn active" data-role="">全部</button>
+        <button class="rf-btn" data-role="user">用户</button>
+        <button class="rf-btn" data-role="guest">游客</button>
+        <button class="rf-btn" data-role="bot">人机</button>
+        <button class="rf-btn" data-role="admin">管理员</button>
+        <span class="rf-count" id="mediaCount"></span>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th style="width:34px"><input type="checkbox" id="mediaCheckAll"></th><th>文件</th><th>类型</th><th>大小</th><th>所属帖子</th><th>上传者</th><th>时间</th><th style="text-align:right">操作</th></tr></thead>
+          <tbody id="mediaRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-logs" style="display:none">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>操作日志</h2>
+        <button class="btn sm" id="logRefresh">刷新</button>
+        <button class="btn sm danger" id="logClear">清空日志</button>
+        <div class="spacer"></div>
+        <div class="search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9696ac" stroke-width="2.2"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg>
+          <input id="logSearch" placeholder="搜索账号 / IP / 详情">
+        </div>
+      </div>
+      <div class="panel-body" style="padding-top:12px;padding-bottom:2px">
+        <div class="tabs" id="logFilters" style="margin-bottom:12px">
+          <button class="tab on" data-logtype="">全部</button>
+          <button class="tab" data-logtype="login_ok">登录成功</button>
+          <button class="tab" data-logtype="login_fail">密码错误</button>
+          <button class="tab" data-logtype="register">注册</button>
+          <button class="tab" data-logtype="post">发帖</button>
+          <button class="tab" data-logtype="comment">评论</button>
+          <button class="tab" data-logtype="guest">游客</button>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>时间</th><th>类型</th><th>账号</th><th>IP</th><th>详情</th><th style="text-align:right">操作</th></tr></thead>
+          <tbody id="logRows"></tbody>
+        </table>
+      </div>
+      <div class="panel-body" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding-top:10px">
+        <span class="muted" id="logMeta" style="font-size:12px">暂无日志</span>
+        <div class="actions">
+          <button class="btn sm" id="logPrev" disabled>上一页</button>
+          <button class="btn sm" id="logNext" disabled>下一页</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-history" style="display:none">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>修改记录</h2>
+        <button class="btn sm" id="histRefresh">刷新</button>
+        <button class="btn sm danger" id="histClear">清除记录</button>
+        <div class="spacer"></div>
+        <div class="tabs" id="histFilters" style="margin:0">
+          <button class="tab on" data-hscope="">全部</button>
+          <button class="tab" data-hscope="data">数据目录 / 备份</button>
+          <button class="tab" data-hscope="settings">站点设置</button>
+          <button class="tab" data-hscope="manual">人工备注</button>
+        </div>
+      </div>
+      <div class="panel-body" style="padding-top:12px;padding-bottom:4px">
+        <div class="row" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input class="field" id="histNoteInput" placeholder="手动记一笔：例如「把数据目录换到 D 盘」" style="flex:1;min-width:240px;margin:0">
+          <button class="btn sm primary" id="histNoteAdd">添加到记录</button>
+        </div>
+        <p class="data-hint">数据目录变更、站点设置改动、备份 / 恢复 / 清空都会自动记录，谁改的、改前改后是什么都在这里。</p>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th style="width:140px">时间</th><th style="width:96px">范围</th><th style="width:110px">动作</th><th style="width:120px">字段</th><th>修改内容</th><th style="width:110px">操作人</th></tr></thead>
+          <tbody id="histRows"></tbody>
+        </table>
+      </div>
+      <div class="panel-body" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding-top:10px">
+        <span class="muted" id="histMeta" style="font-size:12px">暂无记录</span>
+        <div class="actions">
+          <button class="btn sm" id="histPrev" disabled>上一页</button>
+          <button class="btn sm" id="histNext" disabled>下一页</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-api" style="display:none">
+    <div class="panel">
+      <div class="panel-head"><h2>REST 接口</h2><div class="spacer"></div><span class="muted" style="font-size:12px">所有需要登录的接口使用 <b class="mono">Authorization: Bearer &lt;token&gt;</b></span></div>
+      <div class="panel-body" id="apiList"></div>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="modal" id="modal">
+  <div class="modal-card">
+    <h3 id="modalTitle">确认操作</h3>
+    <p id="modalText"></p>
+    <div class="actions">
+      <button class="btn ghost" id="modalCancel">取消</button>
+      <button class="btn danger" id="modalOk">确认</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var $ = function (s) { return document.querySelector(s); };
+  var token = localStorage.getItem('u-admin-token') || '';
+  var me = null;
+  var state = { tab: 'overview', logType: '', logOffset: 0, logTotal: 0, histScope: '', histOffset: 0, postRole: '', commentRole: '', mediaRole: '', userRole: '' };
+
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  var ROLE_LABEL = { admin: '管理员', user: '用户', guest: '游客', bot: '人机' };
+  function roleChip(role) {
+    if (!role || !ROLE_LABEL[role]) return '';
+    return '<span class="role-chip role-' + role + '">' + ROLE_LABEL[role] + '</span>';
+  }
+
+  function fmtTime(iso) {
+    if (!iso) return '-';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    var p = function (n) { return n < 10 ? '0' + n : '' + n; };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+
+  /* 日志时间精确到秒 */
+  function fmtTimeSec(iso) {
+    var base = fmtTime(iso);
+    if (base === '-' || base === iso) return base;
+    var d = new Date(iso);
+    var p = function (n) { return n < 10 ? '0' + n : '' + n; };
+    return base + ':' + p(d.getSeconds());
+  }
+
+  function fmtBytes(n) {
+    n = Number(n) || 0;
+    if (n < 1024) return n + ' B';
+    if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+    if (n < 1073741824) return (n / 1048576).toFixed(1) + ' MB';
+    return (n / 1073741824).toFixed(2) + ' GB';
+  }
+
+  function fmtUptime(sec) {
+    sec = Number(sec) || 0;
+    var d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600), m = Math.floor((sec % 3600) / 60);
+    return (d ? d + ' 天 ' : '') + (h ? h + ' 小时 ' : '') + m + ' 分钟';
+  }
+
+  function toast(msg) {
+    var t = $('#toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(function () { t.classList.remove('show'); }, 2200);
+  }
+
+  var modalResolve = null;
+  function confirmBox(title, msg) {
+    $('#modalTitle').textContent = title;
+    $('#modalText').textContent = msg;
+    $('#modal').classList.add('show');
+    return new Promise(function (resolve) { modalResolve = resolve; });
+  }
+  $('#modalCancel').onclick = function () { $('#modal').classList.remove('show'); modalResolve && modalResolve(false); modalResolve = null; };
+  $('#modalOk').onclick = function () { $('#modal').classList.remove('show'); modalResolve && modalResolve(true); modalResolve = null; };
+
+  function api(path, opts) {
+    opts = opts || {};
+    var headers = opts.headers || {};
+    if (token) headers.Authorization = 'Bearer ' + token;
+    if (opts.body && !(opts.body instanceof Blob)) headers['Content-Type'] = 'application/json';
+    return fetch(path, {
+      method: opts.method || 'GET',
+      headers: headers,
+      body: opts.body && !(opts.body instanceof Blob) ? JSON.stringify(opts.body) : opts.body
+    }).then(function (r) {
+      if (r.status === 401) {
+        logout(true);
+        throw new Error('登录已失效，请重新登录');
+      }
+      return r.json().catch(function () { return {}; }).then(function (data) {
+        if (!r.ok) throw new Error(data.error || '请求失败 (' + r.status + ')');
+        return data;
+      });
+    });
+  }
+
+  function showLogin(show) {
+    $('#login').classList.toggle('hide', !show);
+    if (show) setTimeout(function () { $('#lgUser').focus(); }, 60);
+  }
+
+  function logout(silent) {
+    token = '';
+    me = null;
+    localStorage.removeItem('u-admin-token');
+    showLogin(true);
+    if (!silent) toast('已退出登录');
+  }
+
+  $('#loginForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    $('#lgErr').textContent = '';
+    var u = $('#lgUser').value.trim();
+    var p = $('#lgPass').value;
+    fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, password: p })
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.d.error || '登录失败');
+        if (!res.d.user.isAdmin) throw new Error('该账号不是管理员');
+        token = res.d.token;
+        me = res.d.user;
+        localStorage.setItem('u-admin-token', token);
+        showLogin(false);
+        boot();
+        toast('欢迎回来，' + me.nickname);
+      })
+      .catch(function (err) {
+        var msg = err && err.message ? err.message : '登录失败';
+        if (/Failed to fetch|NetworkError|Load failed/i.test(msg)) {
+          msg = location.protocol === 'file:'
+            ? '请用 http://服务器IP:8787/admin 打开，不要直接双击文件'
+            : '连不上服务器，请确认后台已启动、地址和端口正确';
+        }
+        $('#lgErr').textContent = msg;
+      });
+  });
+
+  $('#logoutBtn').onclick = function () {
+    confirmBox('退出登录', '确定要退出后台吗？').then(function (ok) {
+      if (!ok) return;
+      api('/api/logout', { method: 'POST' }).catch(function () {}).then(function () { logout(); });
+    });
+  };
+
+  $('#refreshBtn').onclick = function () { refresh(); toast('已刷新'); };
+
+  document.querySelectorAll('.tab[data-tab]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      state.tab = b.dataset.tab;
+      document.querySelectorAll('.tab[data-tab]').forEach(function (x) { x.classList.toggle('on', x === b); });
+      ['overview', 'settings', 'users', 'posts', 'comments', 'media', 'logs', 'history', 'api'].forEach(function (k) {
+        $('#view-' + k).style.display = k === state.tab ? '' : 'none';
+      });
+      refresh();
+    });
+  });
+
+  var userTimer = null;
+  $('#userSearch').addEventListener('input', function () {
+    clearTimeout(userTimer);
+    userTimer = setTimeout(loadUsers, 260);
+  });
+  var postTimer = null;
+  $('#postSearch').addEventListener('input', function () {
+    clearTimeout(postTimer);
+    postTimer = setTimeout(loadPosts, 260);
+  });
+  var commentTimer = null;
+  $('#commentSearch').addEventListener('input', function () {
+    clearTimeout(commentTimer);
+    commentTimer = setTimeout(loadComments, 260);
+  });
+  var mediaTimer = null;
+  $('#mediaSearch').addEventListener('input', function () {
+    clearTimeout(mediaTimer);
+    mediaTimer = setTimeout(loadMedia, 260);
+  });
+
+  /* ---- 发布者身份筛选条 ---- */
+  var ROLE_LOADERS = { post: loadPosts, comment: loadComments, media: loadMedia, user: loadUsers };
+  var ROLE_STATE_KEY = { post: 'postRole', comment: 'commentRole', media: 'mediaRole', user: 'userRole' };
+  function bindRoleFilter(box, scope) {
+    if (!box) return;
+    box.addEventListener('click', function (e) {
+      var btn = e.target.closest('.rf-btn');
+      if (!btn || !box.contains(btn)) return;
+      var role = btn.dataset.role || '';
+      state[ROLE_STATE_KEY[scope]] = role;
+      Array.prototype.forEach.call(box.querySelectorAll('.rf-btn'), function (b) {
+        b.classList.toggle('active', b === btn);
+      });
+      var loader = ROLE_LOADERS[scope];
+      if (loader) loader().catch(function (err) { toast(err.message); });
+    });
+  }
+  bindRoleFilter($('#postRoleFilter'), 'post');
+  bindRoleFilter($('#commentRoleFilter'), 'comment');
+  bindRoleFilter($('#mediaRoleFilter'), 'media');
+  bindRoleFilter($('#userRoleFilter'), 'user');
+
+  /* ---- 操作日志 ---- */
+  var LOG_TYPE_LABELS = {
+    login_ok: ['登录成功', 'ok'],
+    login_fail: ['密码错误', 'ban'],
+    register: ['注册', 'admin'],
+    register_fail: ['注册失败', 'ban'],
+    guest: ['游客', ''],
+    post: ['发帖', ''],
+    comment: ['评论', ''],
+    admin: ['管理操作', 'admin']
+  };
+
+  var logTimer = null;
+  $('#logSearch').addEventListener('input', function () {
+    clearTimeout(logTimer);
+    logTimer = setTimeout(function () {
+      state.logOffset = 0;
+      loadLogs();
+    }, 260);
+  });
+
+  document.querySelectorAll('#logFilters .tab').forEach(function (b) {
+    b.addEventListener('click', function () {
+      state.logType = b.dataset.logtype || '';
+      state.logOffset = 0;
+      document.querySelectorAll('#logFilters .tab').forEach(function (x) { x.classList.toggle('on', x === b); });
+      loadLogs();
+    });
+  });
+
+  $('#logRefresh').onclick = function () { loadLogs().then(function () { toast('日志已刷新'); }); };
+
+  $('#logClear').onclick = function () {
+    confirmBox('清空日志', '将删除全部操作日志记录，且无法恢复。确定继续？').then(function (ok) {
+      if (!ok) return;
+      api('/api/admin/logs/clear', { method: 'POST' }).then(function () {
+        state.logOffset = 0;
+        toast('日志已清空');
+        loadLogs();
+      }).catch(function (e) { toast(e.message); });
+    });
+  };
+
+  $('#logPrev').onclick = function () {
+    state.logOffset = Math.max(0, state.logOffset - 50);
+    loadLogs();
+  };
+
+  $('#logNext').onclick = function () {
+    if (state.logOffset + 50 >= state.logTotal) return;
+    state.logOffset += 50;
+    loadLogs();
+  };
+
+  document.addEventListener('click', function (e) {
+    var block = e.target.closest('[data-block]');
+    if (!block) return;
+    var id = Number(block.dataset.block);
+    var name = block.dataset.blockName || '';
+    confirmBox('拉黑账号', '确定拉黑 @' + name + '？拉黑后该账号将无法登录、发帖和评论。').then(function (ok) {
+      if (!ok) return;
+      api('/api/admin/logs/blacklist', { method: 'POST', body: { userId: id, username: name } })
+        .then(function () {
+          toast('已拉黑 @' + name);
+          loadLogs();
+        })
+        .catch(function (err) { toast(err.message); });
+    });
+  });
+
+  function loadLogs() {
+    var q = $('#logSearch').value.trim();
+    return api(
+      '/api/admin/logs?type=' + encodeURIComponent(state.logType) +
+      '&q=' + encodeURIComponent(q) +
+      '&offset=' + state.logOffset + '&limit=50'
+    ).then(function (d) {
+      var list = d.logs || [];
+      state.logTotal = Number(d.total) || 0;
+      if (!list.length) {
+        $('#logRows').innerHTML = '<tr><td colspan="6"><div class="empty">暂无匹配日志</div></td></tr>';
+      } else {
+        $('#logRows').innerHTML = list.map(function (l) {
+          var info = LOG_TYPE_LABELS[l.type] || [l.type || '其他', ''];
+          var tagCls = info[1] ? ' ' + info[1] : '';
+          var canBlock = l.userId && !l.isAdmin && l.type !== 'admin';
+          return '<tr>' +
+            '<td class="muted mono" style="white-space:nowrap">' + esc(fmtTimeSec(l.createdAt)) + '</td>' +
+            '<td><span class="tag' + tagCls + '">' + esc(info[0]) + '</span></td>' +
+            '<td><b>' + esc(l.username || '-') + '</b>' + (l.userId ? '<small class="muted"> #' + l.userId + '</small>' : '') + '</td>' +
+            '<td class="mono">' + esc(l.ip || '-') + '</td>' +
+            '<td><div class="clip">' + (esc(l.detail) || '<span class="muted">-</span>') + '</div></td>' +
+            '<td><div class="actions">' +
+              (canBlock
+                ? '<button class="btn sm danger" data-block="' + l.userId + '" data-block-name="' + esc(l.username) + '">拉黑</button>'
+                : '<span class="muted" style="font-size:12px">-</span>') +
+            '</div></td>' +
+          '</tr>';
+        }).join('');
+      }
+      var page = Math.floor(state.logOffset / 50) + 1;
+      $('#logMeta').textContent = '共 ' + state.logTotal + ' 条 · 第 ' + page + ' 页';
+      $('#logPrev').disabled = state.logOffset <= 0;
+      $('#logNext').disabled = state.logOffset + 50 >= state.logTotal;
+    });
+  }
+
+  $('#exportBtn').onclick = function () {
+    if (!token) return;
+    fetch('/api/admin/export', { headers: { Authorization: 'Bearer ' + token } })
+      .then(function (r) {
+        if (!r.ok) throw new Error('导出失败');
+        return r.blob();
+      })
+      .then(function (blob) {
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'u-server-backup.json';
+        a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+        toast('已导出备份');
+      })
+      .catch(function (e) { toast(e.message); });
+  };
+
+  function loadBackup() {
+    return api('/api/admin/backup').then(function (d) {
+      var b = d.backup || { exists: false };
+      var kv = $('#backupKv');
+      if (!b.exists) {
+        kv.innerHTML = '<div class="row"><span>最近备份</span><span>暂无备份</span></div>';
+        $('#restoreAppDataBtn').disabled = true;
+        return;
+      }
+      var c = b.counts || {};
+      var kindText = b.reason === 'manual' ? '手动' : (b.reason === 'legacy' ? '旧版' : '自动');
+      kv.innerHTML =
+        '<div class="row"><span>最近备份</span><span>' + esc(fmtTime(b.createdAt)) + ' · ' + kindText +
+        (b.name ? ' · <span class="mono">' + esc(b.name) + '</span>' : '') + '</span></div>' +
+        '<div class="row"><span>备份内容</span><span>' + (c.users || 0) + ' 用户 · ' + (c.posts || 0) + ' 帖子 · ' +
+        (c.comments || 0) + ' 评论 · ' + (b.mediaFiles || 0) + ' 个媒体文件</span></div>' +
+        '<div class="row"><span>备份大小</span><span>' + fmtBytes(b.bytes || 0) + '</span></div>';
+      if (b.reason === 'legacy') {
+        kv.innerHTML += '<div class="row"><span>提示</span><span>这是旧版单文件备份（不含图片视频），点「立即备份」会生成完整备份</span></div>';
+      }
+      $('#restoreAppDataBtn').disabled = false;
+    });
+  }
+
+  /* ---- 备份文件列表 ---- */
+  function loadBackupList() {
+    return api('/api/admin/backups').then(function (d) {
+      var dir = d.dir || '';
+      $('#backupDir').textContent = dir || '（接口未返回目录）';
+      $('#backupDir').title = dir;
+      var items = d.items || [];
+      if (!items.length) {
+        $('#backupList').innerHTML = '<tr><td colspan="5"><div class="empty">还没有备份文件</div></td></tr>';
+        return;
+      }
+      $('#backupList').innerHTML = items.map(function (it) {
+        var kind = it.kind === 'auto'
+          ? '<span class="tag priv">自动</span>'
+          : '<span class="tag ok">手动</span>';
+        if (it.legacy) kind = '<span class="tag">旧版</span>';
+        var c = it.counts || {};
+        var meta = it.legacy
+          ? '仅数据库'
+          : (c.posts || 0) + ' 帖子 · ' + (it.mediaFiles || 0) + ' 个媒体';
+        return '<tr>' +
+          '<td class="clip mono" title="' + esc(it.name) + '">' + esc(it.name) + '</td>' +
+          '<td class="muted">' + fmtBytes(it.size) + '<br><span style="font-size:11.5px">' + meta + '</span></td>' +
+          '<td class="muted">' + esc(fmtTime(it.createdAt || it.mtime)) + '</td>' +
+          '<td>' + kind + '</td>' +
+          '<td><div class="actions">' +
+            '<button class="btn sm" data-bkres="' + esc(it.name) + '">恢复</button>' +
+            '<button class="btn sm danger" data-bkdel="' + esc(it.name) + '">删除</button>' +
+          '</div></td>' +
+        '</tr>';
+      }).join('');
+    }).catch(function (e) {
+      $('#backupDir').textContent = '备份目录接口待后端就绪';
+      $('#backupList').innerHTML = '<tr><td colspan="5"><div class="empty">备份列表待后端就绪（' + esc(e.message) + '）</div></td></tr>';
+    });
+  }
+
+  $('#backupReload').onclick = function () {
+    loadBackupList().then(function () { toast('备份列表已刷新'); });
+  };
+
+  $('#backupNowBtn').onclick = function () {
+    confirmBox('立即备份', '确定现在备份一份数据吗？').then(function (ok) {
+      if (!ok) return;
+      api('/api/admin/backup', { method: 'POST' }).then(function (d) {
+        var name = (d && (d.name || d.file || (d.backup && d.backup.name))) || '';
+        toast(name ? '已备份：' + name : '已备份当前数据');
+        return Promise.all([
+          loadBackup().catch(function () {}),
+          loadBackupList()
+        ]);
+      }).catch(function (e) { toast(e.message); });
+    });
+  };
+
+  $('#clearAppDataBtn').onclick = function () {
+    confirmBox(
+      '清除 App 全部数据',
+      '将删除所有帖子、评论、点赞、转发、私信、通知、媒体文件以及普通用户账号，管理员账号保留。清除前会自动备份，可在需要时恢复。确定继续？'
+    ).then(function (ok) {
+      if (!ok) return;
+      api('/api/admin/data/clear', { method: 'POST' }).then(function () {
+        toast('已清除全部数据');
+        refresh();
+        loadBackup();
+      }).catch(function (e) { toast(e.message); });
+    });
+  };
+
+  $('#restoreAppDataBtn').onclick = function () {
+    confirmBox(
+      '恢复数据',
+      '将用最近一次备份覆盖当前全部数据（含账号、帖子、评论与媒体文件）。确定恢复？'
+    ).then(function (ok) {
+      if (!ok) return;
+      api('/api/admin/data/restore', { method: 'POST' }).then(function (d) {
+        if (d.token) {
+          token = d.token;
+          localStorage.setItem('u-admin-token', token);
+        }
+        toast('已恢复最近一份备份' + (d && d.name ? '：' + d.name : ''));
+        refresh();
+        loadBackup();
+      }).catch(function (e) { toast(e.message); });
+    });
+  };
+
+  function renderStats(s, sv) {
+    var disk = (sv && sv.mediaDisk) || { bytes: s.mediaBytes || 0, files: s.media || 0 };
+    var cards = [
+      ['用户总数', s.users, '游客 ' + (s.guests || 0) + ' · 今日新增 ' + s.todayUsers],
+      ['帖子总数', s.posts, '今日新增 ' + s.todayPosts],
+      ['评论', s.comments, '点赞 ' + s.likes],
+      ['在线会话', s.online, '封禁 ' + s.banned + ' · 禁言 ' + (s.muted || 0)],
+      ['上传存储', fmtBytes(disk.bytes), '图片 ' + fmtBytes(s.mediaImageBytes || 0) + ' · 视频 ' + fmtBytes(s.mediaVideoBytes || 0)],
+      ['媒体文件', s.media, '实际落盘 ' + disk.files + ' 个文件'],
+      ['数据库', fmtBytes(window.__dbSize || 0), 'SQLite (WAL)']
+    ];
+    $('#statCards').innerHTML = cards.map(function (c) {
+      return '<div class="stat"><div class="k">' + esc(c[0]) + '</div><div class="v">' + esc(c[1]) + '</div><div class="s">' + esc(c[2]) + '</div></div>';
+    }).join('');
+  }
+
+  function renderServer(sv, dd) {
+    window.__dbSize = sv.dbSize;
+    var rows = [
+      ['监听端口', sv.port],
+      ['已运行', fmtUptime(sv.uptime)],
+      ['Node 版本', sv.node],
+      ['系统', sv.platform],
+      ['数据库大小', fmtBytes(sv.dbSize)],
+      ['数据目录', sv.dataDir || (dd && dd.dir) || '—'],
+      ['上传目录', sv.mediaDir || '—'],
+      ['数据目录总占用', fmtBytes((sv.dataDisk || {}).bytes || 0)],
+      ['内存占用', fmtBytes(sv.rss)],
+      ['局域网地址', (sv.addresses || []).map(function (a) { return 'http://' + a.address + ':' + sv.port; }).join('  ') || '未检测到']
+    ];
+    $('#serverKv').innerHTML = rows.map(function (r) {
+      return '<div class="row"><span>' + esc(r[0]) + '</span><span>' + esc(r[1]) + '</span></div>';
+    }).join('');
+    $('#subline').textContent = '仅本机可见的管理地址 · 端口 ' + sv.port + ' · 已运行 ' + fmtUptime(sv.uptime);
+  }
+
+  function loadUsers() {
+    var q = $('#userSearch').value.trim();
+    var role = state.userRole || '';
+    return api('/api/admin/users?q=' + encodeURIComponent(q) + roleQuery(role)).then(function (d) {
+      var list = d.users || [];
+      setRoleCount($('#userCount'), d.total);
+      $('#userCheckAll').checked = false;
+      if (!list.length) {
+        $('#userRows').innerHTML = '<tr><td colspan="7"><div class="empty">没有匹配的用户</div></td></tr>';
+        return;
+      }
+      $('#userRows').innerHTML = list.map(function (u) {
+        var tags = '';
+        if (u.isAdmin) tags += '<span class="tag admin">管理员</span> ';
+        if (u.isGuest) tags += '<span class="tag">游客</span> ';
+        if (u.banned) tags += '<span class="tag ban">已封禁</span> ';
+        if (u.muted) tags += '<span class="tag ban">已禁言</span> ';
+        if (!u.banned && !u.muted) tags += '<span class="tag ok">正常</span>';
+        var act = '';
+        if (!u.isAdmin) {
+          act += '<button class="btn sm" data-mute="' + u.id + '" data-on="' + (u.muted ? '1' : '0') + '">' + (u.muted ? '解除禁言' : '禁言') + '</button> ' +
+            '<button class="btn sm" data-ban="' + u.id + '" data-on="' + (u.banned ? '1' : '0') + '">' + (u.banned ? '解封' : '封禁') + '</button> ' +
+            '<button class="btn sm danger" data-del="' + u.id + '">删除</button> ';
+        }
+        if (!u.isGuest) {
+          act += '<button class="btn sm" data-pass="' + u.id + '" data-name="' + esc(u.username) + '">改密码</button>';
+        }
+        if (!act) act = '<span class="muted" style="font-size:12px">-</span>';
+        var canCheck = !u.isAdmin && !(me && me.id === u.id);
+        return '<tr>' +
+          '<td>' + (canCheck
+            ? '<input type="checkbox" class="row-check" data-kind="user" value="' + u.id + '">'
+            : '<input type="checkbox" disabled title="管理员不可批量删除">') + '</td>' +
+          '<td class="muted">#' + u.id + '</td>' +
+          '<td><div class="who"><div class="av">' + esc((u.nickname || u.username).slice(0, 1).toUpperCase()) + '</div><div><b>' + esc(u.nickname) + roleChip(u.role) + '</b><small>@' + esc(u.username) + '</small></div></div></td>' +
+          '<td class="muted">' + fmtTime(u.createdAt) + '</td>' +
+          '<td>' + (u.postCount || 0) + '</td>' +
+          '<td>' + tags + '</td>' +
+          '<td><div class="actions">' + act + '</div></td>' +
+        '</tr>';
+      }).join('');
+    });
+  }
+
+  /* ---------------- 站点设置 ---------------- */
+
+  var SERVICE_LABELS = [
+    ['recommend', '为你推荐'],
+    ['talk', '说说'],
+    ['search', '搜索'],
+    ['notify', '通知'],
+    ['dm', '私信'],
+    ['memo', '备忘录'],
+    ['compose', '发布按钮'],
+    ['lan', '局域网互传'],
+    ['game', '游戏']
+  ];
+
+  function loadSettings() {
+    return api('/api/admin/settings').then(function (d) {
+      var s = d.settings || {};
+      $('#setImageMB').value = s.uploadImageMB || 50;
+      $('#setVideoMB').value = s.uploadVideoMB || 200;
+      ['Post', 'Comment', 'Like', 'Dm'].forEach(function (name) {
+        var every = s['bot' + name + 'EverySec'];
+        var round = s['bot' + name + 'PerRound'];
+        $('#setBot' + name + 'Every').value = every == null ? 20 : every;
+        $('#setBot' + name + 'Round').value = round == null ? 0 : round;
+      });
+      $('#setMediaMaxPerPost').value = s.mediaMaxPerPost == null ? 9 : s.mediaMaxPerPost;
+      $('#setAutoBackupHours').value = s.autoBackupHours == null ? 24 : s.autoBackupHours;
+      $('#setBackupKeep').value = s.backupKeep == null ? 5 : s.backupKeep;
+      $('#setAllowPost').checked = s.allowPost !== false;
+      $('#setAllowComment').checked = s.allowComment !== false;
+      var hidden = s.hiddenServices || [];
+      $('#serviceChecks').innerHTML = SERVICE_LABELS.map(function (item) {
+        return '<label><input type="checkbox" data-service="' + item[0] + '"' +
+          (hidden.indexOf(item[0]) < 0 ? ' checked' : '') + '>' + esc(item[1]) + '</label>';
+      }).join('');
+      return loadAdmins();
+    });
+  }
+
+  function loadAdmins() {
+    return api('/api/admin/admins').then(function (d) {
+      var list = d.admins || [];
+      $('#adminList').innerHTML = list.length
+        ? list.map(function (u) {
+            var self = me && me.id === u.id;
+            return '<div class="admin-item"><div class="av">' + esc((u.nickname || u.username).slice(0, 1).toUpperCase()) + '</div>' +
+              '<div><b>' + esc(u.nickname) + '</b><div class="muted">@' + esc(u.username) + (self ? ' · 当前账号' : '') + '</div></div>' +
+              '<div style="flex:1"></div>' +
+              (self || u.username === 'admin'
+                ? '<span class="muted" style="font-size:12px">' + (u.username === 'admin' ? 'App 官方账号' : '当前登录') + '</span>'
+                : '<button class="btn sm danger" data-demote="' + u.id + '">取消管理员</button>') +
+              '</div>';
+          }).join('')
+        : '<div class="muted" style="font-size:12px">暂无管理员</div>';
+    });
+  }
+
+  /* ---- 数据目录（上传目录） ---- */
+  var DIR_SOURCE_LABEL = {
+    env: '环境变量 U_DATA_DIR 指定（配置文件不生效）',
+    config: 'data-dir.json 指定（管理台改过）',
+    default: '默认目录（server/data）'
+  };
+
+  function loadDataDir() {
+    return api('/api/admin/data-dir').then(function (d) {
+      var rows = [
+        ['当前数据目录', d.dir],
+        ['上传目录（media）', d.mediaDir],
+        ['自动备份目录', d.backupDir],
+        ['配置文件', d.configFile],
+        ['目录来源', DIR_SOURCE_LABEL[d.source] || d.source],
+        ['数据库大小', fmtBytes(d.dbBytes)],
+        ['目录可写', d.writable ? '是' : '否（改目录前请先处理权限）'],
+        ['上次修改', d.configUpdatedAt ? fmtTimeSec(d.configUpdatedAt) + (d.configUpdatedBy ? ' · ' + d.configUpdatedBy : '') : '未改过']
+      ];
+      $('#dirKv').innerHTML = rows.map(function (r) {
+        return '<div><span>' + esc(r[0]) + '</span><b class="mono" style="word-break:break-all">' + esc(r[1]) + '</b></div>';
+      }).join('');
+      $('#dirInput').value = d.dir;
+      $('#dirInput').disabled = d.source === 'env';
+      $('#dirSave').disabled = d.source === 'env';
+      return d;
+    });
+  }
+
+  $('#dirReload').onclick = function () { loadDataDir().then(function () { toast('已重新读取'); }).catch(function (e) { toast(e.message); }); };
+
+  $('#dirSave').onclick = function () {
+    var dir = $('#dirInput').value.trim();
+    var note = $('#dirNote').value.trim();
+    if (!dir) return toast('请填写数据目录');
+    confirmBox('修改数据目录', '确定把数据目录改成：\n' + dir + '\n\n改完需要重启服务器才生效。旧目录里的数据不会自动搬过去。').then(function (ok) {
+      if (!ok) return;
+      api('/api/admin/data-dir', { method: 'POST', body: { dir: dir, note: note } }).then(function (d) {
+        if (d.changed === false) { toast('目录没变化'); return; }
+        toast('已写入配置，重启服务器后生效');
+        $('#dirNote').value = '';
+        return loadDataDir();
+      }).catch(function (e) { toast(e.message); });
+    });
+  };
+
+  /* ---- 修改记录 ---- */
+  var HIST_SCOPE_LABEL = { data: '数据', settings: '设置', manual: '备注', app: '应用' };
+  var HIST_ACTION_LABEL = {
+    'change-dir': '改数据目录', update: '改设置', backup: '备份',
+    restore: '恢复', clear: '清空', note: '手动备注'
+  };
+
+  function loadHistory() {
+    var q = '/api/admin/history?limit=100&offset=' + state.histOffset + (state.histScope ? '&scope=' + encodeURIComponent(state.histScope) : '');
+    return api(q).then(function (d) {
+      var list = d.history || [];
+      $('#histRows').innerHTML = list.length
+        ? list.map(function (h) {
+            var change = '';
+            if (h.oldValue || h.newValue) {
+              change = '<span class="muted mono" style="word-break:break-all">' + esc(h.oldValue || '（空）') +
+                '</span> → <b class="mono" style="word-break:break-all">' + esc(h.newValue || '（空）') + '</b>';
+            }
+            if (h.note) change += (change ? '<br>' : '') + '<span class="muted" style="font-size:12px">' + esc(h.note) + '</span>';
+            return '<tr><td class="mono" style="font-size:12px">' + esc(fmtTimeSec(h.createdAt)) + '</td>' +
+              '<td>' + esc(HIST_SCOPE_LABEL[h.scope] || h.scope) + '</td>' +
+              '<td>' + esc(HIST_ACTION_LABEL[h.action] || h.action) + '</td>' +
+              '<td class="mono" style="font-size:12px">' + esc(h.field || '-') + '</td>' +
+              '<td>' + (change || '<span class="muted">-</span>') + '</td>' +
+              '<td>' + esc(h.actor || '系统') + (h.ip ? '<div class="muted mono" style="font-size:11px">' + esc(h.ip) + '</div>' : '') + '</td></tr>';
+          }).join('')
+        : '<tr><td colspan="6" class="muted" style="text-align:center;padding:26px">还没有修改记录</td></tr>';
+      var from = d.total ? state.histOffset + 1 : 0;
+      state.histTotal = Number(d.total) || 0;
+      $('#histMeta').textContent = '共 ' + d.total + ' 条，显示 ' + from + '-' + (state.histOffset + list.length);
+      $('#histPrev').disabled = state.histOffset <= 0;
+      $('#histNext').disabled = state.histOffset + 100 >= d.total;
+    });
+  }
+
+  $('#histRefresh').onclick = function () { loadHistory().then(function () { toast('已刷新'); }).catch(function (e) { toast(e.message); }); };
+
+  $('#histClear').onclick = function () {
+    var scope = state.histScope || '';
+    var scopeText = scope ? '「' + (HIST_SCOPE_LABEL[scope] || scope) + '」范围' : '全部范围';
+    var countQ = '/api/admin/history?limit=1&offset=0' + (scope ? '&scope=' + encodeURIComponent(scope) : '');
+    api(countQ).then(function (d) {
+      var n = Number(d.total) || 0;
+      if (!n) { toast('当前筛选下没有可清除的记录'); return; }
+      return confirmBox(
+        '清除修改记录',
+        '将删除' + scopeText + '的 ' + n + ' 条记录，不可恢复。确定继续？'
+      ).then(function (ok) {
+        if (!ok) return;
+        return api('/api/admin/history/clear', { method: 'POST', body: { scope: scope } }).then(function (r) {
+          var deleted = Number(r && r.deleted);
+          toast('已删除 ' + (isFinite(deleted) ? deleted : n) + ' 条记录');
+          state.histOffset = 0;
+          return loadHistory();
+        });
+      });
+    }).catch(function (e) { toast(e.message); });
+  };
+
+  $('#histPrev').onclick = function () { state.histOffset = Math.max(0, state.histOffset - 100); loadHistory().catch(function (e) { toast(e.message); }); };
+  $('#histNext').onclick = function () { state.histOffset += 100; loadHistory().catch(function (e) { toast(e.message); }); };
+  document.querySelectorAll('#histFilters .tab[data-hscope]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      state.histScope = b.dataset.hscope;
+      state.histOffset = 0;
+      document.querySelectorAll('#histFilters .tab[data-hscope]').forEach(function (x) { x.classList.toggle('on', x === b); });
+      loadHistory().catch(function (e) { toast(e.message); });
+    });
+  });
+  $('#histNoteAdd').onclick = function () {
+    var note = $('#histNoteInput').value.trim();
+    if (!note) return toast('先写点什么');
+    api('/api/admin/history/note', { method: 'POST', body: { note: note, scope: 'manual' } }).then(function () {
+      $('#histNoteInput').value = '';
+      toast('已记入修改记录');
+      return loadHistory();
+    }).catch(function (e) { toast(e.message); });
+  };
+
+  $('#saveSettingsBtn').onclick = function () {
+    var hidden = [];
+    document.querySelectorAll('#serviceChecks input[data-service]').forEach(function (c) {
+      if (!c.checked) hidden.push(c.dataset.service);
+    });
+
+    var mediaMax = Number($('#setMediaMaxPerPost').value);
+    if (!isFinite(mediaMax) || mediaMax < 1 || mediaMax > 9) {
+      toast('单帖媒体上限需填 1-9 的整数');
+      $('#setMediaMaxPerPost').focus();
+      return;
+    }
+    mediaMax = Math.round(mediaMax);
+
+    /* 人机频率：四类动作各自「每 N 秒 M 条」，N 为 1-3600 整数，M 为 0-1000 整数 */
+    var BOT_LABELS = { Post: '发帖', Comment: '评论', Like: '点赞', Dm: '私信' };
+    var botFields = {};
+    var botError = null;
+    ['Post', 'Comment', 'Like', 'Dm'].forEach(function (name) {
+      if (botError) return;
+      var label = BOT_LABELS[name];
+      var everyEl = $('#setBot' + name + 'Every');
+      var roundEl = $('#setBot' + name + 'Round');
+      var every = Number(everyEl.value);
+      var round = Number(roundEl.value);
+      if (!isFinite(every) || every < 1 || every > 3600) {
+        botError = { msg: '人机' + label + '间隔需填 1-3600 的整数（秒）', el: everyEl };
+        return;
+      }
+      if (!isFinite(round) || round < 0 || round > 1000) {
+        botError = { msg: '人机' + label + '条数需填 0-1000 的整数（条）', el: roundEl };
+        return;
+      }
+      botFields['bot' + name + 'EverySec'] = Math.round(every);
+      botFields['bot' + name + 'PerRound'] = Math.round(round);
+    });
+    if (botError) {
+      toast(botError.msg);
+      botError.el.focus();
+      return;
+    }
+
+    var autoHours = Number($('#setAutoBackupHours').value);
+    if (!isFinite(autoHours) || autoHours < 0 || autoHours > 168) {
+      toast('自动备份间隔需填 0-168 的整数（小时，0 关闭）');
+      $('#setAutoBackupHours').focus();
+      return;
+    }
+    var backupKeep = Number($('#setBackupKeep').value);
+    if (!isFinite(backupKeep) || backupKeep < 1 || backupKeep > 20) {
+      toast('备份保留份数需填 1-20 的整数');
+      $('#setBackupKeep').focus();
+      return;
+    }
+
+    var settingsBody = {
+      autoBackupHours: Math.round(autoHours),
+      backupKeep: Math.round(backupKeep),
+      uploadImageMB: Number($('#setImageMB').value),
+      uploadVideoMB: Number($('#setVideoMB').value),
+      allowPost: $('#setAllowPost').checked,
+      allowComment: $('#setAllowComment').checked,
+      mediaMaxPerPost: mediaMax,
+      hiddenServices: hidden
+    };
+    ['Post', 'Comment', 'Like', 'Dm'].forEach(function (name) {
+      settingsBody['bot' + name + 'EverySec'] = botFields['bot' + name + 'EverySec'];
+      settingsBody['bot' + name + 'PerRound'] = botFields['bot' + name + 'PerRound'];
+    });
+    api('/api/admin/settings', { method: 'POST', body: settingsBody }).then(function (d) {
+      var s = d.settings || {};
+      toast('设置已保存：发帖 每 ' + s.botPostEverySec + ' 秒 ' + s.botPostPerRound + ' 条 · 评论 每 ' + s.botCommentEverySec + ' 秒 ' + s.botCommentPerRound + ' 条 · 点赞 每 ' + s.botLikeEverySec + ' 秒 ' + s.botLikePerRound + ' 条 · 私信 每 ' + s.botDmEverySec + ' 秒 ' + s.botDmPerRound + ' 条');
+      return loadSettings();
+    }).catch(function (e) { toast(e.message); });
+  };
+
+  $('#addAdminBtn').onclick = function () {
+    var box = $('#adminAddBox');
+    box.style.display = box.style.display === 'none' ? 'grid' : 'none';
+  };
+
+  $('#saveAdminBtn').onclick = function () {
+    var username = $('#newAdminUser').value.trim();
+    var nickname = $('#newAdminName').value.trim();
+    var password = $('#newAdminPass').value;
+    if (!username) { toast('请填写管理员账号'); return; }
+    if (password.length < 6) { toast('密码至少 6 位'); return; }
+    api('/api/admin/admins', { method: 'POST', body: { username: username, nickname: nickname, password: password } })
+      .then(function () {
+        toast('管理员已添加');
+        $('#newAdminUser').value = '';
+        $('#newAdminName').value = '';
+        $('#newAdminPass').value = '';
+        $('#adminAddBox').style.display = 'none';
+        loadAdmins();
+      })
+      .catch(function (e) { toast(e.message); });
+  };
+
+  /* 发布者身份筛选：role 为空表示全部。切换时 offset 归零（列表本身不分页，一次性取 50 条） */
+  var ROLE_EMPTY = {
+    '': '没有匹配的帖子',
+    user: '没有用户发布的内容',
+    guest: '没有游客发布的内容',
+    bot: '没有人机发布的内容',
+    admin: '没有管理员发布的内容'
+  };
+  var ROLE_EMPTY_MEDIA = {
+    '': '没有匹配的媒体',
+    user: '没有用户上传的媒体',
+    guest: '没有游客上传的媒体',
+    bot: '没有人机上传的媒体',
+    admin: '没有管理员上传的媒体'
+  };
+  function setRoleCount(el, total) {
+    if (!el) return;
+    el.textContent = total == null ? '' : '共 ' + total + ' 条' + (total > 50 ? '（显示最新 50 条）' : '');
+  }
+  function roleQuery(role) {
+    return role ? '&role=' + encodeURIComponent(role) : '';
+  }
+
+  function loadPosts() {
+    var q = $('#postSearch').value.trim();
+    var role = state.postRole || '';
+    return api('/api/admin/posts?q=' + encodeURIComponent(q) + roleQuery(role)).then(function (d) {
+      var list = d.posts || [];
+      setRoleCount($('#postCount'), d.total);
+      if (!list.length) {
+        var msg = (q || role) ? (ROLE_EMPTY[role] || '没有匹配的帖子') : '还没有帖子';
+        $('#postRows').innerHTML = '<tr><td colspan="9"><div class="empty">' + msg + '</div></td></tr>';
+        return;
+      }
+      $('#postRows').innerHTML = list.map(function (p) {
+        var views = p.views == null ? 0 : p.views;
+        return '<tr>' +
+          '<td><input type="checkbox" class="row-check" data-kind="post" value="' + p.id + '"></td>' +
+          '<td class="muted">#' + p.id + '</td>' +
+          '<td><div class="who"><div class="av">' + esc((p.author.nickname || p.author.username).slice(0, 1).toUpperCase()) + '</div><div><b>' + esc(p.author.nickname) + roleChip(p.role || (p.author && p.author.role)) + '</b><small>@' + esc(p.author.username) + '</small></div></div></td>' +
+          '<td><div class="clip">' + (esc(p.text) || '<span class="muted">（无文字）</span>') + (p.private ? ' <span class="tag priv">私密</span>' : '') + '</div></td>' +
+          '<td>' + p.mediaCount + '</td>' +
+          '<td class="muted">' + p.likeCount + ' 赞 · ' + p.commentCount + ' 评</td>' +
+          '<td><div style="display:flex;gap:6px;align-items:center">' +
+            '<input class="view-input" id="pv-' + p.id + '" type="number" min="0" step="1" value="' + esc(views) + '">' +
+            '<button class="btn sm" data-viewssave="' + p.id + '">保存</button>' +
+          '</div></td>' +
+          '<td class="muted">' + fmtTime(p.createdAt) + '</td>' +
+          '<td><div class="actions"><button class="btn sm danger" data-postdel="' + p.id + '">删除</button></div></td>' +
+        '</tr>';
+      }).join('');
+    });
+  }
+
+  function loadComments() {
+    var q = $('#commentSearch').value.trim();
+    var role = state.commentRole || '';
+    return api('/api/admin/comments?q=' + encodeURIComponent(q) + roleQuery(role)).then(function (d) {
+      var list = d.comments || [];
+      setRoleCount($('#commentCount'), d.total);
+      if (!list.length) {
+        var msg = (q || role) ? (ROLE_EMPTY[role] || '没有匹配的评论') : '还没有评论';
+        $('#commentRows').innerHTML = '<tr><td colspan="7"><div class="empty">' + msg + '</div></td></tr>';
+        return;
+      }
+      $('#commentRows').innerHTML = list.map(function (c) {
+        var guest = c.author.isGuest ? ' <span class="tag">游客</span>' : '';
+        return '<tr>' +
+          '<td><input type="checkbox" class="row-check" data-kind="comment" value="' + c.id + '"></td>' +
+          '<td class="muted">#' + c.id + '</td>' +
+          '<td><div class="who"><div class="av">' + esc((c.author.nickname || c.author.username).slice(0, 1).toUpperCase()) + '</div><div><b>' + esc(c.author.nickname) + roleChip(c.role || (c.author && c.author.role)) + '</b><small>@' + esc(c.author.username) + '</small></div></div>' + guest + '</td>' +
+          '<td><div class="clip">' + esc(c.text) + '</div></td>' +
+          '<td><div class="clip muted">#' + c.postId + ' ' + (esc(c.postText) || '（无文字）') + '</div></td>' +
+          '<td class="muted">' + fmtTime(c.createdAt) + '</td>' +
+          '<td><div class="actions"><button class="btn sm danger" data-cdel="' + c.id + '">删除</button></div></td>' +
+        '</tr>';
+      }).join('');
+    });
+  }
+
+  function loadMedia() {
+    var q = $('#mediaSearch').value.trim();
+    var role = state.mediaRole || '';
+    return api('/api/admin/media?q=' + encodeURIComponent(q) + roleQuery(role)).then(function (d) {
+      var list = d.media || [];
+      setRoleCount($('#mediaCount'), d.total);
+      if (!list.length) {
+        var msg = (q || role) ? (ROLE_EMPTY_MEDIA[role] || '没有匹配的媒体') : '还没有媒体文件';
+        $('#mediaRows').innerHTML = '<tr><td colspan="8"><div class="empty">' + msg + '</div></td></tr>';
+        return;
+      }
+      $('#mediaRows').innerHTML = list.map(function (m) {
+        var tag = m.isVideo ? '<span class="tag">视频</span>' : '<span class="tag ok">图片</span>';
+        return '<tr>' +
+          '<td><input type="checkbox" class="row-check" data-kind="media" value="' + esc(m.id) + '"></td>' +
+          '<td class="clip mono">' + esc(m.filename) + '</td>' +
+          '<td>' + tag + '</td>' +
+          '<td class="muted">' + fmtBytes(m.size) + '</td>' +
+          '<td class="clip muted">' + (m.postId ? '#' + m.postId + ' ' + (esc(m.postText) || '') : '（未关联帖子）') + '</td>' +
+          '<td class="muted">' + esc(m.author.nickname || m.author.username || '-') + roleChip(m.role || (m.author && m.author.role)) + '</td>' +
+          '<td class="muted">' + fmtTime(m.createdAt) + '</td>' +
+          '<td><div class="actions"><button class="btn sm danger" data-mdel="' + esc(m.id) + '">删除</button></div></td>' +
+        '</tr>';
+      }).join('');
+    });
+  }
+
+  document.addEventListener('click', function (e) {
+    var ban = e.target.closest('[data-ban]');
+    if (ban) {
+      var on = ban.dataset.on === '1';
+      confirmBox(on ? '解封用户' : '封禁用户', on ? '解封后该用户可以重新登录。' : '封禁后该用户的登录状态会立即失效。').then(function (ok) {
+        if (!ok) return;
+        api('/api/admin/users/' + ban.dataset.ban + '/ban', { method: 'POST', body: { banned: !on } })
+          .then(function () { toast(on ? '已解封' : '已封禁'); loadUsers(); })
+          .catch(function (err) { toast(err.message); });
+      });
+      return;
+    }
+    var mute = e.target.closest('[data-mute]');
+    if (mute) {
+      var mon = mute.dataset.on === '1';
+      api('/api/admin/users/' + mute.dataset.mute + '/mute', { method: 'POST', body: { muted: !mon } })
+        .then(function () { toast(mon ? '已解除禁言' : '已禁言该用户'); loadUsers(); })
+        .catch(function (err) { toast(err.message); });
+      return;
+    }
+    var pass = e.target.closest('[data-pass]');
+    if (pass) {
+      var pwd = window.prompt('为 @' + pass.dataset.name + ' 设置新密码（至少 6 位）');
+      if (pwd === null) return;
+      if (pwd.length < 6) { toast('密码至少 6 位'); return; }
+      api('/api/admin/users/' + pass.dataset.pass + '/password', { method: 'POST', body: { password: pwd } })
+        .then(function () { toast('密码已修改，下次登录请使用新密码'); })
+        .catch(function (err) { toast(err.message); });
+      return;
+    }
+    var demote = e.target.closest('[data-demote]');
+    if (demote) {
+      confirmBox('取消管理员', '取消后该账号将失去管理台权限，至少保留一名管理员。').then(function (ok) {
+        if (!ok) return;
+        api('/api/admin/admins/' + demote.dataset.demote + '/demote', { method: 'POST' })
+          .then(function () { toast('已取消管理员身份'); loadAdmins(); })
+          .catch(function (err) { toast(err.message); });
+      });
+      return;
+    }
+    var del = e.target.closest('[data-del]');
+    if (del) {
+      confirmBox('删除用户', '将删除该用户及其全部帖子、评论和媒体，且不可恢复。').then(function (ok) {
+        if (!ok) return;
+        api('/api/admin/users/' + del.dataset.del, { method: 'DELETE' })
+          .then(function () { toast('用户已删除'); loadUsers(); refresh(); })
+          .catch(function (err) { toast(err.message); });
+      });
+      return;
+    }
+    var pd = e.target.closest('[data-postdel]');
+    if (pd) {
+      confirmBox('删除帖子', '删除后该帖子的评论、点赞和媒体文件都会一并清除。').then(function (ok) {
+        if (!ok) return;
+        api('/api/admin/posts/' + pd.dataset.postdel, { method: 'DELETE' })
+          .then(function () { toast('帖子已删除'); loadPosts(); refresh(); })
+          .catch(function (err) { toast(err.message); });
+      });
+      return;
+    }
+    var cd = e.target.closest('[data-cdel]');
+    if (cd) {
+      confirmBox('删除评论', '删除后不可恢复。').then(function (ok) {
+        if (!ok) return;
+        api('/api/admin/comments/' + cd.dataset.cdel, { method: 'DELETE' })
+          .then(function () { toast('评论已删除'); loadComments(); refresh(); })
+          .catch(function (err) { toast(err.message); });
+      });
+      return;
+    }
+    var md = e.target.closest('[data-mdel]');
+    if (md) {
+      confirmBox('删除媒体', '将删除该图片/视频文件，且不可恢复。').then(function (ok) {
+        if (!ok) return;
+        api('/api/admin/media/' + md.dataset.mdel, { method: 'DELETE' })
+          .then(function () { toast('媒体已删除'); loadMedia(); refresh(); })
+          .catch(function (err) { toast(err.message); });
+      });
+      return;
+    }
+    var bkr = e.target.closest('[data-bkres]');
+    if (bkr) {
+      var resName = bkr.dataset.bkres || '';
+      confirmBox('恢复这份备份', '将用「' + resName + '」覆盖当前全部数据（数据库 + 图片视频）。确定恢复？').then(function (ok) {
+        if (!ok) return;
+        api('/api/admin/data/restore', { method: 'POST', body: { name: resName } })
+          .then(function (d) {
+            if (d && d.token) {
+              token = d.token;
+              localStorage.setItem('u-admin-token', token);
+            }
+            toast('已恢复：' + resName);
+            refresh();
+            loadBackup().catch(function () {});
+            loadBackupList();
+          })
+          .catch(function (err) { toast(err.message); });
+      });
+      return;
+    }
+    var bkd = e.target.closest('[data-bkdel]');
+    if (bkd) {
+      var bkName = bkd.dataset.bkdel || '';
+      confirmBox('删除备份文件', '确定删除备份文件「' + bkName + '」？删除后不可恢复。').then(function (ok) {
+        if (!ok) return;
+        api('/api/admin/backups', { method: 'DELETE', body: { name: bkName } })
+          .then(function () {
+            toast('已删除备份：' + bkName);
+            loadBackup().catch(function () {});
+            loadBackupList();
+          })
+          .catch(function (err) { toast(err.message); });
+      });
+      return;
+    }
+    var vs = e.target.closest('[data-viewssave]');
+    if (vs) {
+      var pid = vs.dataset.viewssave;
+      var inp = document.getElementById('pv-' + pid);
+      if (!inp) { toast('找不到该帖子的浏览量输入框'); return; }
+      var v = Number(inp.value);
+      if (!isFinite(v) || v < 0) { toast('浏览量要填不小于 0 的整数'); inp.focus(); return; }
+      v = Math.floor(v);
+      api('/api/admin/posts/' + pid + '/views', { method: 'POST', body: { views: v } })
+        .then(function (d) {
+          var nv = d && d.views != null ? d.views : v;
+          inp.value = nv;
+          toast('浏览量已更新为 ' + nv);
+        })
+        .catch(function (err) { toast(err.message); });
+      return;
+    }
+  });
+
+  /* 批量删除 / 一键清空 / 全选 */
+  function checkedIds(kind) {
+    return Array.prototype.map.call(document.querySelectorAll('.row-check[data-kind="' + kind + '"]:checked'), function (c) {
+      return c.value;
+    });
+  }
+  function bulkDelete(kind, endpoint, reload) {
+    var ids = checkedIds(kind);
+    if (!ids.length) { toast('请先勾选要删除的项目'); return; }
+    confirmBox('批量删除', '将删除选中的 ' + ids.length + ' 项，且不可恢复。').then(function (ok) {
+      if (!ok) return;
+      api(endpoint, { method: 'POST', body: { ids: ids } })
+        .then(function () { toast('已删除 ' + ids.length + ' 项'); reload(); refresh(); })
+        .catch(function (err) { toast(err.message); });
+    });
+  }
+  function clearAll(kind, endpoint, desc, reload) {
+    confirmBox('一键清空', desc).then(function (ok) {
+      if (!ok) return;
+      api(endpoint, { method: 'POST', body: { ids: ['__all__'] } })
+        .then(function () { toast('已清空'); reload(); refresh(); })
+        .catch(function (err) { toast(err.message); });
+    });
+  }
+  function selectAll(kind, checkAllId) {
+    var on = document.getElementById(checkAllId).checked;
+    Array.prototype.forEach.call(document.querySelectorAll('.row-check[data-kind="' + kind + '"]'), function (c) {
+      if (!c.disabled) c.checked = on;
+    });
+  }
+
+  $('#userSelectAll').addEventListener('click', function () {
+    var box = $('#userCheckAll');
+    box.checked = !box.checked;
+    selectAll('user', 'userCheckAll');
+  });
+  $('#userCheckAll').addEventListener('change', function () { selectAll('user', 'userCheckAll'); });
+  $('#userBulkDel').addEventListener('click', function () {
+    var ids = checkedIds('user');
+    if (!ids.length) { toast('请先勾选要删除的账号'); return; }
+    confirmBox('批量删除账号', '将删除选中的 ' + ids.length + ' 个账号及其帖子、评论和媒体（管理员会自动跳过），且不可恢复。').then(function (ok) {
+      if (!ok) return;
+      api('/api/admin/users/bulk-delete', { method: 'POST', body: { ids: ids } })
+        .then(function (d) {
+          toast('已删除 ' + (d.deleted || 0) + ' 个账号' + (d.skipped ? '，跳过 ' + d.skipped + ' 个' : ''));
+          loadUsers();
+          refresh();
+        })
+        .catch(function (err) { toast(err.message); });
+    });
+  });
+
+  $('#postSelectAll').addEventListener('click', function () {
+    var box = $('#postCheckAll');
+    box.checked = !box.checked;
+    selectAll('post', 'postCheckAll');
+  });
+  $('#commentSelectAll').addEventListener('click', function () {
+    var box = $('#commentCheckAll');
+    box.checked = !box.checked;
+    selectAll('comment', 'commentCheckAll');
+  });
+  $('#mediaSelectAll').addEventListener('click', function () {
+    var box = $('#mediaCheckAll');
+    box.checked = !box.checked;
+    selectAll('media', 'mediaCheckAll');
+  });
+  $('#postCheckAll').addEventListener('change', function () { selectAll('post', 'postCheckAll'); });
+  $('#commentCheckAll').addEventListener('change', function () { selectAll('comment', 'commentCheckAll'); });
+  $('#mediaCheckAll').addEventListener('change', function () { selectAll('media', 'mediaCheckAll'); });
+
+  $('#postBulkDel').addEventListener('click', function () { bulkDelete('post', '/api/admin/posts/bulk-delete', loadPosts); });
+  $('#commentBulkDel').addEventListener('click', function () { bulkDelete('comment', '/api/admin/comments/bulk-delete', loadComments); });
+  $('#mediaBulkDel').addEventListener('click', function () { bulkDelete('media', '/api/admin/media/bulk-delete', loadMedia); });
+
+  $('#postClearAll').addEventListener('click', function () {
+    clearAll('post', '/api/admin/posts/clear', '将删除全部帖子及其评论、点赞和媒体文件，且不可恢复。', loadPosts);
+  });
+  $('#commentClearAll').addEventListener('click', function () {
+    clearAll('comment', '/api/admin/comments/clear', '将删除全部评论，且不可恢复。', loadComments);
+  });
+  $('#mediaClearAll').addEventListener('click', function () {
+    clearAll('media', '/api/admin/media/clear', '将删除全部媒体文件，且不可恢复。', loadMedia);
+  });
+
+  var ENDPOINTS = [
+    ['POST', '/api/register', '注册并返回 token'],
+    ['POST', '/api/login', '登录（管理员也走这里）'],
+    ['POST', '/api/guest', '游客登录，返回匿名账号 token'],
+    ['POST', '/api/logout', '退出登录，销毁当前 token'],
+    ['GET', '/api/me', '当前登录用户'],
+    ['GET', '/api/users/:id', '用户资料与帖子数'],
+    ['GET', '/api/posts?offset=&limit=&author=', '帖子列表（私密仅自己可见）'],
+    ['POST', '/api/posts', '发帖 {text,private,media:[id]}'],
+    ['GET', '/api/posts/:id', '帖子详情'],
+    ['DELETE', '/api/posts/:id', '删除自己的帖子'],
+    ['POST', '/api/posts/:id/like', '点赞 / 取消点赞'],
+    ['GET', '/api/posts/:id/comments', '评论列表'],
+    ['POST', '/api/posts/:id/comments', '发表评论 {text}'],
+    ['POST', '/api/media', '上传图片/视频，Header: X-Filename'],
+    ['GET', '/media/:id', '读取媒体文件（支持 Range）'],
+    ['GET', '/api/health', '健康检查']
+  ];
+
+  function renderApi() {
+    $('#apiList').innerHTML = ENDPOINTS.map(function (e) {
+      return '<div class="endpoint"><span class="method ' + e[0] + '">' + e[0] + '</span><code>' + esc(e[1]) + '</code><span class="desc">' + esc(e[2]) + '</span></div>';
+    }).join('') +
+      '<div class="endpoint"><span class="method GET">ADMIN</span><code>/api/admin/overview · /users · /posts · /comments · /logs · /logs/clear · /logs/blacklist</code><span class="desc">需管理员 token</span></div>';
+  }
+
+  function refresh() {
+    if (!token) return Promise.resolve();
+    if (state.tab === 'overview') {
+      return api('/api/admin/overview').then(function (d) {
+        window.__dbSize = d.server.dbSize;
+        renderServer(d.server, d.dataDir);
+        renderStats(d.stats, d.server);
+        loadBackup().catch(function () {});
+        loadBackupList();
+        $('#healthDot').style.background = 'var(--green)';
+        $('#healthText').textContent = '在线';
+      }).catch(function (e) {
+        $('#healthDot').style.background = 'var(--danger)';
+        $('#healthText').textContent = '异常';
+        toast(e.message);
+      });
+    }
+    if (state.tab === 'settings') return loadSettings().then(loadDataDir).catch(function (e) { toast(e.message); });
+    if (state.tab === 'users') return loadUsers().catch(function (e) { toast(e.message); });
+    if (state.tab === 'posts') return loadPosts().catch(function (e) { toast(e.message); });
+    if (state.tab === 'comments') return loadComments().catch(function (e) { toast(e.message); });
+    if (state.tab === 'media') return loadMedia().catch(function (e) { toast(e.message); });
+    if (state.tab === 'logs') return loadLogs().catch(function (e) { toast(e.message); });
+    if (state.tab === 'history') return loadHistory().catch(function (e) { toast(e.message); });
+    if (state.tab === 'api') { renderApi(); return Promise.resolve(); }
+  }
+
+  function boot() {
+    renderApi();
+    api('/api/me').then(function (d) {
+      if (!d.user.isAdmin) throw new Error('该账号不是管理员');
+      me = d.user;
+      showLogin(false);
+      return refresh();
+    }).catch(function () {
+      logout(true);
+    });
+  }
+
+  if (location.protocol === 'file:') {
+    showLogin(true);
+    $('#lgErr').textContent = '请用 http://服务器IP:8787/admin 打开，不要直接双击文件';
+  } else if (token) boot();
+  else showLogin(true);
+})();
+</script>
+</body>
+</html>

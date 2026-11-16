@@ -1,0 +1,13 @@
+const {chromium}=require('playwright-core');
+(async()=>{ const b=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,args:['--no-sandbox','--disable-gpu','--autoplay-policy=no-user-gesture-required']});
+ const page=await b.newPage({viewport:{width:420,height:900}}); const errs=[]; page.on('pageerror',x=>errs.push(String(x).slice(0,140)));
+ await page.goto('http://127.0.0.1:8765/',{waitUntil:'load'}); await page.waitForTimeout(1300); await page.click('#guestBtn').catch(()=>{}); await page.waitForTimeout(1400);
+ await page.evaluate(()=>{ const p=document.querySelector('#feedList .post .pmedia .veil') ; const v=document.querySelector('#feedList .post .pmedia .vgexp'); if(v) v.click(); else if(p) p.click(); });
+ await page.waitForTimeout(1200);
+ await page.evaluate(()=>{ const v=document.querySelector('#feedList .post .pmedia .vgexp'); if(v) v.click(); });
+ await page.waitForTimeout(1500);
+ const m=await page.evaluate(()=>{const vh=innerHeight; const q=s=>document.querySelector(s); const bx=s=>{const el=q(s); if(!el)return null; const r=el.getBoundingClientRect(); return {top:Math.round(r.top),bottom:Math.round(r.bottom),fromBottom:Math.round(vh-r.bottom)};};
+  return {open:q('#mediaViewer').classList.contains('open'), next:!!q('[data-mvact=\"next\"]'), ctl:bx('.mv-ctl'), prog:bx('.mv-prog'), dots:bx('.mv-bot')};});
+ console.log(JSON.stringify({m,errs}));
+ await b.close();
+})().catch(e=>{console.log('FATAL',e.message);process.exit(1);});

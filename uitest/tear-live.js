@@ -1,0 +1,18 @@
+const {chromium}=require('playwright-core');
+(async()=>{ const b=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,args:['--no-sandbox','--disable-gpu','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const page=await b.newPage({viewport:{width:420,height:900},deviceScaleFactor:1}); const errs=[]; page.on('pageerror',x=>errs.push(String(x).slice(0,140)));
+ await page.goto('http://127.0.0.1:8765/',{waitUntil:'load'}); await page.waitForTimeout(1200); await page.click('#guestBtn').catch(()=>{}); await page.waitForTimeout(900);
+ await page.evaluate(()=>{ document.getElementById('sideDrawer').classList.add('open'); }); await page.waitForTimeout(400);
+ await page.click('[data-side=\"game\"]'); await page.waitForTimeout(600);
+ await page.click('#lobbySheet [data-lb=\"tear\"]');
+ await page.waitForFunction(()=>window.tearState&&window.tearState().built,{timeout:25000}).catch(()=>errs.push('build timeout'));
+ await page.waitForTimeout(600);
+ const box=await page.evaluate(()=>{const r=document.getElementById('tearStage').getBoundingClientRect();return{x:r.x,y:r.y,w:r.width,h:r.height};});
+ await page.mouse.move(box.x+box.w*0.3,box.y+box.h*0.5); await page.mouse.down();
+ for(let i=0;i<20;i++){ await page.mouse.move(box.x+box.w*(0.3+0.4*i/19), box.y+box.h*0.5+Math.sin(i/3)*8); await page.waitForTimeout(15);} await page.mouse.up();
+ await page.waitForTimeout(600);
+ const st=await page.evaluate(()=>window.tearState());
+ await page.screenshot({path:'D:/deepseek/gouzuoqu/U/.tmp-test/tear-live.png'});
+ console.log(JSON.stringify({st,box,errs}));
+ await b.close();
+})().catch(e=>{console.log('FATAL',e.message);process.exit(1);});

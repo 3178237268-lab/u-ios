@@ -1,0 +1,20 @@
+﻿const { chromium } = require('playwright-core');
+(async () => {
+  const b = await chromium.launch({ executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', headless: true });
+  const p = await (await b.newContext()).newPage();
+  const bad = [];
+  p.on('pageerror', e => bad.push('PAGEERROR ' + String(e).slice(0,200)));
+  p.on('requestfailed', r => bad.push('REQFAIL ' + r.url().slice(0,110) + ' ' + (r.failure()||{}).errorText));
+  p.on('response', r => { if (r.status() >= 400) bad.push('HTTP' + r.status() + ' ' + r.url().slice(0,110)); });
+  await p.goto('http://127.0.0.1:8765/', { waitUntil: 'load', timeout: 30000 });
+  await p.waitForTimeout(3500);
+  const st = await p.evaluate(() => ({ title: document.title, guest: !!document.querySelector('#guestBtn'), srv: localStorage.getItem('u-server') }));
+  console.log('state', JSON.stringify(st));
+  await p.click('#guestBtn').catch(e => bad.push('click guest: ' + e.message.slice(0,80)));
+  await p.waitForTimeout(2500);
+  const feed = await p.evaluate(() => ({ posts: document.querySelectorAll('.post').length, txt: (document.querySelector('.post .ptext')||{}).innerText?.slice(0,40) }));
+  console.log('feed', JSON.stringify(feed));
+  console.log('problems', bad.length); bad.slice(0,10).forEach(x => console.log(' ', x));
+  await p.screenshot({ path: 'D:\\deepseek\\gouzuoqu\\U\\.tmp-test\\shots\\http-app.png' });
+  await b.close();
+})();

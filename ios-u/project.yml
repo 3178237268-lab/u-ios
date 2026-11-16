@@ -1,0 +1,28 @@
+name: U
+options:
+  bundleIdPrefix: com.trae
+  deploymentTarget:
+    iOS: "14.0"
+  createIntermediateGroups: true
+targets:
+  U:
+    type: application
+    platform: iOS
+    sources:
+      - path: U
+      - path: U/www
+        type: folder
+        buildPhase: resources
+    info:
+      path: U/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.trae.u
+        MARKETING_VERSION: "1.75"
+        CURRENT_PROJECT_VERSION: "76"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        SWIFT_VERSION: "5.0"
+        ENABLE_BITCODE: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""

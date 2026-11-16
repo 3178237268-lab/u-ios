@@ -1,0 +1,24 @@
+# ── 构建产物（由 build-ipa / build-apk 生成，不入库）──
+/dist/
+/android-u/build/
+/android-u/U.apk
+/android-u/U.apk.idsig
+/ios-u/build/
+/ios-u/U/www/
+/ios-u/U.xcodeproj/
+*.ipa
+*.xcarchive
+
+# ── 本地备份与临时目录 ──
+/11111/
+/.tmp-build/
+/.tmp-test/
+/.android-sdk/
+
+# ── 依赖 ──
+node_modules/
+
+# ── 系统杂物 ──
+.DS_Store
+Thumbs.db
+desktop.ini

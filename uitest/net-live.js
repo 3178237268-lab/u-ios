@@ -1,0 +1,14 @@
+const {chromium}=require('playwright-core');
+(async()=>{ const b=await chromium.launch({executablePath:'C:/Program Files/Google/Chrome/Application/chrome.exe',headless:true,args:['--no-sandbox','--disable-gpu']});
+ const ctx=await b.newContext({viewport:{width:420,height:900}}); const page=await ctx.newPage(); const errs=[]; page.on('pageerror',x=>errs.push(String(x).slice(0,140)));
+ await page.goto('http://127.0.0.1:8765/',{waitUntil:'load'}); await page.waitForTimeout(1300); await page.click('#guestBtn').catch(()=>{}); await page.waitForTimeout(1200);
+ await ctx.setOffline(true); await page.waitForTimeout(1600);
+ const bar=await page.evaluate(()=>({on:document.getElementById('netBar').classList.contains('on'),txt:document.getElementById('netBar').textContent.trim(),bottom:Math.round(document.getElementById('netBar').getBoundingClientRect().bottom)}));
+ await page.screenshot({path:'D:/deepseek/gouzuoqu/U/.tmp-test/net-live.png'});
+ await page.click('#feedList .post .pactions .like'); await page.waitForTimeout(400);
+ const like=await page.evaluate(()=>({on:document.querySelector('#feedList .post .pactions .like').classList.contains('on'),toast:document.getElementById('toast').textContent.trim()}));
+ await ctx.setOffline(false); await page.waitForTimeout(1600);
+ const back=await page.evaluate(()=>({barOn:document.getElementById('netBar').classList.contains('on'),toast:document.getElementById('toast').textContent.trim()}));
+ console.log(JSON.stringify({bar,like,back,errs}));
+ await b.close();
+})().catch(e=>{console.log('FATAL',e.message);process.exit(1);});
