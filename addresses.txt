@@ -1,0 +1,9 @@
+U addresses - regenerated every time the server starts
+
+App / web    : http://192.168.1.217:8765
+Admin LAN    : http://192.168.1.217:8787/admin.html
+Admin local  : http://127.0.0.1:8787/admin.html
+Admin public : https://u.serveousercontent.com/admin.html?serveo-skip-browser-warning=true
+Login        : admin123 / admin123
+
+Serveo warning page: tap Continue once, or use the public link above.

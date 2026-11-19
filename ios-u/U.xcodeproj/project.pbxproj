@@ -1,0 +1,298 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		B10000000000000000000001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000001 /* AppDelegate.swift */; };
+		B10000000000000000000002 /* WebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000002 /* WebViewController.swift */; };
+		B10000000000000000000003 /* Bridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000003 /* Bridge.swift */; };
+		B10000000000000000000004 /* LocalServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000004 /* LocalServer.swift */; };
+		B10000000000000000000005 /* Media.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000005 /* Media.swift */; };
+		B10000000000000000000006 /* CameraSnap.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000006 /* CameraSnap.swift */; };
+		B10000000000000000000007 /* Downloads.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000007 /* Downloads.swift */; };
+		B10000000000000000000008 /* CacheScan.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000008 /* CacheScan.swift */; };
+		B10000000000000000000009 /* Device.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000009 /* Device.swift */; };
+		B1000000000000000000000A /* Bridge.js in Resources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000A /* Bridge.js */; };
+		B1000000000000000000000B /* www in Resources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000B /* www */; };
+		B1000000000000000000000C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000000C /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		F10000000000000000000001 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		F10000000000000000000002 /* WebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebViewController.swift; sourceTree = "<group>"; };
+		F10000000000000000000003 /* Bridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bridge.swift; sourceTree = "<group>"; };
+		F10000000000000000000004 /* LocalServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalServer.swift; sourceTree = "<group>"; };
+		F10000000000000000000005 /* Media.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Media.swift; sourceTree = "<group>"; };
+		F10000000000000000000006 /* CameraSnap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraSnap.swift; sourceTree = "<group>"; };
+		F10000000000000000000007 /* Downloads.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Downloads.swift; sourceTree = "<group>"; };
+		F10000000000000000000008 /* CacheScan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CacheScan.swift; sourceTree = "<group>"; };
+		F10000000000000000000009 /* Device.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Device.swift; sourceTree = "<group>"; };
+		F1000000000000000000000A /* Bridge.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = Bridge.js; sourceTree = "<group>"; };
+		F1000000000000000000000B /* www */ = {isa = PBXFileReference; lastKnownFileType = folder; path = www; sourceTree = "<group>"; };
+		F1000000000000000000000C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		F1000000000000000000000D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F1000000000000000000000E /* U.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = U.entitlements; sourceTree = "<group>"; };
+		F1000000000000000000000F /* U.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = U.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D10000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		C10000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				C10000000000000000000002 /* U */,
+				C10000000000000000000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		C10000000000000000000002 /* U */ = {
+			isa = PBXGroup;
+			children = (
+				F10000000000000000000001 /* AppDelegate.swift */,
+				F10000000000000000000002 /* WebViewController.swift */,
+				F10000000000000000000003 /* Bridge.swift */,
+				F10000000000000000000004 /* LocalServer.swift */,
+				F10000000000000000000005 /* Media.swift */,
+				F10000000000000000000006 /* CameraSnap.swift */,
+				F10000000000000000000007 /* Downloads.swift */,
+				F10000000000000000000008 /* CacheScan.swift */,
+				F10000000000000000000009 /* Device.swift */,
+				F1000000000000000000000A /* Bridge.js */,
+				F1000000000000000000000B /* www */,
+				F1000000000000000000000C /* Assets.xcassets */,
+				F1000000000000000000000D /* Info.plist */,
+				F1000000000000000000000E /* U.entitlements */,
+			);
+			path = U;
+			sourceTree = "<group>";
+		};
+		C10000000000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F1000000000000000000000F /* U.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		E10000000000000000000001 /* U */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = H10000000000000000000002 /* Build configuration list for PBXNativeTarget "U" */;
+			buildPhases = (
+				D10000000000000000000002 /* Sources */,
+				D10000000000000000000001 /* Frameworks */,
+				D10000000000000000000003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = U;
+			productName = U;
+			productReference = F1000000000000000000000F /* U.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E10000000000000000000002 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					E10000000000000000000001 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = H10000000000000000000001 /* Build configuration list for PBXProject "U" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = zh_CN;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				zh_CN,
+				en,
+				Base,
+			);
+			mainGroup = C10000000000000000000001;
+			productRefGroup = C10000000000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E10000000000000000000001 /* U */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D10000000000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B1000000000000000000000A /* Bridge.js in Resources */,
+				B1000000000000000000000B /* www in Resources */,
+				B1000000000000000000000C /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		D10000000000000000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B10000000000000000000001 /* AppDelegate.swift in Sources */,
+				B10000000000000000000002 /* WebViewController.swift in Sources */,
+				B10000000000000000000003 /* Bridge.swift in Sources */,
+				B10000000000000000000004 /* LocalServer.swift in Sources */,
+				B10000000000000000000005 /* Media.swift in Sources */,
+				B10000000000000000000006 /* CameraSnap.swift in Sources */,
+				B10000000000000000000007 /* Downloads.swift in Sources */,
+				B10000000000000000000008 /* CacheScan.swift in Sources */,
+				B10000000000000000000009 /* Device.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		G10000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		G10000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		G10000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = U/U.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 150;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_BITCODE = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = U/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 2.23;
+				PRODUCT_BUNDLE_IDENTIFIER = com.trae.u;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		G10000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = U/U.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 150;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_BITCODE = NO;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = U/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 2.23;
+				PRODUCT_BUNDLE_IDENTIFIER = com.trae.u;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		H10000000000000000000001 /* Build configuration list for PBXProject "U" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				G10000000000000000000001 /* Debug */,
+				G10000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		H10000000000000000000002 /* Build configuration list for PBXNativeTarget "U" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				G10000000000000000000003 /* Debug */,
+				G10000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = E10000000000000000000002 /* Project object */;
+}

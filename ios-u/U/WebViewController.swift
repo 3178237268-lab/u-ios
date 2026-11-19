@@ -1,80 +1,88 @@
 import UIKit
 import WebKit
+import Photos
+import AVFoundation
 
-/// U 的 iOS 外壳：加载打包在 Bundle 里的 www/index.html（与安卓 assets/www 同一份前端）。
-/// 前端自己会用 localStorage 里的 u-server 连局域网里的 U 服务器，所以这里只做容器。
-final class WebViewController: UIViewController, WKNavigationDelegate, WKUIDelegate {
+final class WebViewController: UIViewController, WKUIDelegate, WKNavigationDelegate {
 
     private var webView: WKWebView!
+    private let bridge = Bridge()
+    private var askedPermission = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = UIColor(red: 0.02, green: 0.02, blue: 0.03, alpha: 1)
+        view.backgroundColor = .black
 
-        let conf = WKWebViewConfiguration()
-        conf.allowsInlineMediaPlayback = true
-        conf.mediaTypesRequiringUserActionForPlayback = []
-        conf.preferences.javaScriptEnabled = true
-        conf.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
-        conf.setValue(true, forKey: "allowFileAccessFromFileURLs")
+        do {
+            try LocalServer.shared.start()
+        } catch {
+            NSLog("本地服务启动失败: \(error)")
+        }
 
-        webView = WKWebView(frame: view.bounds, configuration: conf)
+        let cfg = WKWebViewConfiguration()
+        cfg.allowsInlineMediaPlayback = true
+        cfg.mediaTypesRequiringUserActionForPlayback = []
+        // 页面本身就走 http://127.0.0.1，不需要任何 file:// 放宽
+
+        let ucc = WKUserContentController()
+        if let jsPath = Bundle.main.path(forResource: "Bridge", ofType: "js"),
+           let js = try? String(contentsOfFile: jsPath, encoding: .utf8) {
+            ucc.addUserScript(WKUserScript(source: js, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        }
+        cfg.userContentController = ucc
+
+        webView = WKWebView(frame: view.bounds, configuration: cfg)
         webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        webView.navigationDelegate = self
         webView.uiDelegate = self
+        webView.navigationDelegate = self
         webView.isOpaque = false
-        webView.backgroundColor = .clear
-        webView.scrollView.backgroundColor = .clear
-        webView.scrollView.bounces = false
+        webView.backgroundColor = .black
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         if #available(iOS 16.4, *) { webView.isInspectable = true }
         view.addSubview(webView)
 
-        loadBundledPage()
+        bridge.webView = webView
+        bridge.host = self
+
+        let url = URL(string: "http://127.0.0.1:\(LocalServer.shared.port)/index.html")!
+        webView.load(URLRequest(url: url))
     }
 
-    private func loadBundledPage() {
-        guard let dir = Bundle.main.url(forResource: "www", withExtension: nil) else {
-            showFatal("没有找到 www 目录")
-            return
+    override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
+    override var prefersHomeIndicatorAutoHidden: Bool { true }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        // 进 App 后只问一次相册 + 相机；拒绝就按用户要求直接退出
+        guard !askedPermission else { return }
+        askedPermission = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) { [weak self] in
+            self?.askPermissions()
         }
-        let index = dir.appendingPathComponent("index.html")
-        webView.loadFileURL(index, allowingReadAccessTo: dir)
     }
 
-    private func showFatal(_ msg: String) {
-        let label = UILabel(frame: view.bounds)
-        label.text = msg
-        label.textColor = .white
-        label.textAlignment = .center
-        label.numberOfLines = 0
-        view.addSubview(label)
-    }
-
-    // 外链用系统浏览器打开，其余留在应用内
-    func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
-                 decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-        if let url = navigationAction.request.url,
-           let scheme = url.scheme?.lowercased(),
-           scheme == "http" || scheme == "https",
-           navigationAction.navigationType == .linkActivated,
-           !url.isFileURL,
-           !(url.host ?? "").isEmpty,
-           url.absoluteString.contains("127.0.0.1") == false {
-            UIApplication.shared.open(url)
-            decisionHandler(.cancel)
-            return
+    private func askPermissions() {
+        let media = Media()
+        media.requestPermission { okPhoto in
+            AVCaptureDevice.requestAccess(for: .video) { okCam in
+                if !okPhoto || !okCam {
+                    DispatchQueue.main.async {
+                        let alert = UIAlertController(title: "需要相册和相机权限",
+                                                      message: "没有这两项权限 U 无法运行，正在退出。",
+                                                      preferredStyle: .alert)
+                        alert.addAction(UIAlertAction(title: "好", style: .default) { _ in
+                            exit(0)
+                        })
+                        self.present(alert, animated: true)
+                    }
+                }
+            }
         }
-        decisionHandler(.allow)
     }
 
-    // target="_blank" / window.open → 同一页面加载
+    // 让 target=_blank / window.open 也在同一个 WebView 里打开
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
                  for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
-        if let url = navigationAction.request.url { webView.load(URLRequest(url: url)) }
+        if let u = navigationAction.request.url { webView.load(URLRequest(url: u)) }
         return nil
     }
-
-    override var prefersStatusBarHidden: Bool { false }
-    override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }
 }

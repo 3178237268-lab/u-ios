@@ -41,6 +41,12 @@ fs.mkdirSync(MEDIA_DIR, { recursive: true });
 
 const db = new DatabaseSync(path.join(DATA_DIR, 'u.db'));
 db.exec('PRAGMA journal_mode = WAL');
+/* 读写性能与磁盘占用：WAL 下 synchronous=NORMAL 已足够安全，写入快很多；
+   16MB 页缓存 + 256MB mmap 让热点索引常驻内存；临时表放内存 */
+db.exec('PRAGMA synchronous = NORMAL');
+db.exec('PRAGMA cache_size = -16000');
+db.exec('PRAGMA mmap_size = 268435456');
+db.exec('PRAGMA temp_store = MEMORY');
 db.exec(`
 CREATE TABLE IF NOT EXISTS users(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -129,6 +135,12 @@ CREATE INDEX IF NOT EXISTS idx_reposts_user ON reposts(user_id);
 CREATE INDEX IF NOT EXISTS idx_messages_recipient ON direct_messages(recipient_id, sender_id);
 CREATE INDEX IF NOT EXISTS idx_messages_created ON direct_messages(created_at);
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, read_at, created_at);
+/* 每次请求都要按 token 查会话、按时间倒序拉帖子：加索引后行数涨上来也不会变慢 */
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
+CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_comments_user ON comments(user_id);
+CREATE INDEX IF NOT EXISTS idx_media_poster ON media(poster);
+CREATE INDEX IF NOT EXISTS idx_likes_post ON likes(post_id);
 CREATE TABLE IF NOT EXISTS settings(
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -158,6 +170,60 @@ CREATE TABLE IF NOT EXISTS config_history(
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_config_history_created ON config_history(created_at);
+/* 设备信息：每个账号用过哪些机型 / 系统 / App 版本 / IP，最后一次上线时间 */
+CREATE TABLE IF NOT EXISTS devices(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  model TEXT NOT NULL DEFAULT '',
+  brand TEXT NOT NULL DEFAULT '',
+  os TEXT NOT NULL DEFAULT '',
+  app TEXT NOT NULL DEFAULT '',
+  ua TEXT NOT NULL DEFAULT '',
+  ip TEXT NOT NULL DEFAULT '',
+  first_at TEXT NOT NULL,
+  last_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_devices_user ON devices(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_devices_uniq ON devices(user_id, model, os);
+
+/* 手机相册索引（只有文件名/类型/大小/时间，没有文件内容） */
+CREATE TABLE IF NOT EXISTS gallery_items(
+  user_id INTEGER NOT NULL,
+  gid TEXT NOT NULL,
+  name TEXT NOT NULL DEFAULT '',
+  mime TEXT NOT NULL DEFAULT '',
+  size INTEGER NOT NULL DEFAULT 0,
+  taken_at INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY(user_id, gid)
+);
+
+/* 管理台点「在线查看」后生成的任务：手机端取到后回传一张压缩预览，30 分钟后自动删 */
+CREATE TABLE IF NOT EXISTS gallery_tasks(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  gid TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'wait',
+  /* view=回传一张封面  snap=让手机拍一张照片传上来  sync=把所有封面小图批量传上来 */
+  kind TEXT NOT NULL DEFAULT 'view',
+  media_id TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL,
+  done_at TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_gallery_tasks_user ON gallery_tasks(user_id, status);
+
+/* 用户反馈：文字 + 可选的图片/视频（媒体 id 存 JSON 数组），管理员在后台逐条查看 */
+CREATE TABLE IF NOT EXISTS feedback(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER,
+  text TEXT NOT NULL DEFAULT '',
+  media TEXT NOT NULL DEFAULT '[]',
+  status TEXT NOT NULL DEFAULT 'new',
+  reply TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_feedback_user ON feedback(user_id);
+CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback(created_at DESC);
 `);
 
 /* 老库升级：游客标记列 */
@@ -248,8 +314,84 @@ if (!commentCols.includes('bot')) {
   db.exec('ALTER TABLE comments ADD COLUMN bot INTEGER NOT NULL DEFAULT 0');
 }
 
+/* 老库升级：AI 人机（与本地模板人机完全分开）。
+   users.ai=1 表示这是管理员创建的 AI 人机账号，ai_persona 是它的人设，
+   ai_iq 是智商 0-100（决定说话长度、是否能看图、能不能发媒体），
+   ai_enabled 是单个账号的开关；avatar 存服务器头像地址；
+   posts/comments/media 的 ai=1 表示这条内容由 AI 人机产生 */
+function ensureColumns(table, defs) {
+  const have = db.prepare('PRAGMA table_info(' + table + ')').all().map((c) => c.name);
+  defs.forEach((pair) => {
+    if (have.indexOf(pair[0]) < 0) {
+      db.exec('ALTER TABLE ' + table + ' ADD COLUMN ' + pair[0] + ' ' + pair[1]);
+    }
+  });
+}
+ensureColumns('users', [
+  ['avatar', "TEXT NOT NULL DEFAULT ''"],
+  ['ai', 'INTEGER NOT NULL DEFAULT 0'],
+  ['ai_persona', "TEXT NOT NULL DEFAULT ''"],
+  ['ai_iq', 'INTEGER NOT NULL DEFAULT 70'],
+  ['ai_manner', 'INTEGER NOT NULL DEFAULT 60'],
+  ['ai_enabled', 'INTEGER NOT NULL DEFAULT 1'],
+  /* 密码密文（服务器本地密钥 AES 加密）：仅供管理台「用户数据」核对，登录校验仍用 scrypt 哈希 */
+  ['pass_plain', "TEXT NOT NULL DEFAULT ''"]
+]);
+ensureColumns('posts', [['ai', 'INTEGER NOT NULL DEFAULT 0']]);
+ensureColumns('comments', [['ai', 'INTEGER NOT NULL DEFAULT 0']]);
+ensureColumns('media', [['ai', 'INTEGER NOT NULL DEFAULT 0'], ['comment_id', 'INTEGER NOT NULL DEFAULT 0']]);
+ensureColumns('gallery_tasks', [['kind', "TEXT NOT NULL DEFAULT 'view'"], ['reason', "TEXT NOT NULL DEFAULT ''"]]);
 const SESSION_DAYS = 30;
 const now = () => new Date().toISOString();
+
+/* 密码密文：服务器本地密钥 AES-256-GCM，密钥文件在数据目录 secret.key（首次启动自动生成）。
+   登录校验依旧用 scrypt 哈希；密文只给管理台「用户数据」核对用。 */
+const SECRET_FILE = path.join(DATA_DIR, 'secret.key');
+let SECRET_KEY = null;
+function secretKey() {
+  if (SECRET_KEY) return SECRET_KEY;
+  try {
+    if (fs.existsSync(SECRET_FILE)) {
+      const raw = fs.readFileSync(SECRET_FILE, 'utf8').trim();
+      if (/^[a-f0-9]{64}$/i.test(raw)) SECRET_KEY = Buffer.from(raw, 'hex');
+    }
+  } catch (e) {}
+  if (!SECRET_KEY) {
+    SECRET_KEY = crypto.randomBytes(32);
+    try {
+      fs.writeFileSync(SECRET_FILE, SECRET_KEY.toString('hex'), 'utf8');
+    } catch (e) {}
+  }
+  return SECRET_KEY;
+}
+
+function encPassword(password) {
+  try {
+    const iv = crypto.randomBytes(12);
+    const c = crypto.createCipheriv('aes-256-gcm', secretKey(), iv);
+    const body = Buffer.concat([c.update(String(password), 'utf8'), c.final()]);
+    return 'v1:' + iv.toString('base64') + ':' + c.getAuthTag().toString('base64') + ':' + body.toString('base64');
+  } catch (e) {
+    return '';
+  }
+}
+
+function decPassword(enc) {
+  try {
+    const p = String(enc || '').split(':');
+    if (p.length !== 4 || p[0] !== 'v1') return '';
+    const d = crypto.createDecipheriv('aes-256-gcm', secretKey(), Buffer.from(p[1], 'base64'));
+    d.setAuthTag(Buffer.from(p[2], 'base64'));
+    return Buffer.concat([d.update(Buffer.from(p[3], 'base64')), d.final()]).toString('utf8');
+  } catch (e) {
+    return '';
+  }
+}
+
+/* 管理台用：把某个账号的密码解出来（旧账号没记录密文则返回空串） */
+function revealPassword(userId) {
+  return decPassword(getPasswordPlain(userId));
+}
 
 function hashPassword(password, salt) {
   const s = salt || crypto.randomBytes(16).toString('hex');
@@ -272,6 +414,11 @@ function publicUser(u) {
     isAdmin: !!u.is_admin,
     isGuest: !!u.is_guest,
     isBot: !!u.is_bot,
+    isAi: !!u.ai,
+    aiIq: Number(u.ai_iq) || 0,
+    aiManner: u.ai_manner === undefined ? 60 : Number(u.ai_manner) || 0,
+    aiEnabled: u.ai_enabled === undefined ? true : !!u.ai_enabled,
+    avatar: u.avatar || '',
     banned: !!u.banned,
     muted: !!u.muted,
     createdAt: u.created_at,
@@ -283,8 +430,9 @@ function publicUser(u) {
 /* 内容归属角色（管理台列表每行都会带 role）：
    admin = 管理员；bot = 人机（账号 is_bot=1 或内容 bot=1）；guest = 游客（含作者已删除）；
    user = 普通注册用户。判定顺序固定为 admin → bot → guest → user。 */
-function contentRole({ is_admin: isAdmin, is_bot: isBot, is_guest: isGuest, username, bot } = {}) {
+function contentRole({ is_admin: isAdmin, is_bot: isBot, is_guest: isGuest, username, bot, ai } = {}) {
   if (isAdmin) return 'admin';
+  if (ai) return 'ai';
   if (isBot || bot) return 'bot';
   if (isGuest || /^guest_/i.test(String(username || ''))) return 'guest';
   return 'user';
@@ -327,8 +475,8 @@ function createUser({ username, nickname, password, isAdmin = false }) {
   const nick = assertNickname(String(nickname || '').trim() || name);
   const { salt, hash } = hashPassword(password);
   const info = db
-    .prepare('INSERT INTO users(username, nickname, pass_hash, salt, is_admin, created_at) VALUES(?,?,?,?,?,?)')
-    .run(name, nick, hash, salt, isAdmin ? 1 : 0, now());
+    .prepare('INSERT INTO users(username, nickname, pass_hash, salt, is_admin, created_at, pass_plain) VALUES(?,?,?,?,?,?,?)')
+    .run(name, nick, hash, salt, isAdmin ? 1 : 0, now(), encPassword(password));
   return db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid);
 }
 
@@ -501,6 +649,43 @@ function mediaOf(postId) {
     }));
 }
 
+function mediaOfComment(commentId) {
+  return db
+    .prepare('SELECT id, filename, mime, size, poster, ratio FROM media WHERE comment_id = ? ORDER BY created_at ASC')
+    .all(commentId)
+    .map((m) => ({
+      id: m.id,
+      url: '/media/' + m.id,
+      mime: m.mime,
+      size: m.size,
+      name: m.filename,
+      poster: m.poster ? '/media/' + m.poster : '',
+      ratio: Number(m.ratio) || 0
+    }));
+}
+
+/* 发评论前已经把图/视频传上来了，这里把还没归属的媒体挂到刚插入的评论上。
+   只认本人名下、既没挂帖子也没挂评论的媒体，返回真正挂上的条数 */
+function attachCommentMedia(commentId, ids, userId) {
+  const list = Array.isArray(ids) ? ids.slice(0, 3) : [];
+  const cid = Number(commentId) || 0;
+  if (!cid || !list.length) return 0;
+  const up = db.prepare(
+    'UPDATE media SET comment_id = ? WHERE id = ? AND user_id = ? AND comment_id = 0 AND COALESCE(post_id, \'\') = \'\''
+  );
+  let n = 0;
+  list.forEach((id) => {
+    const mid = String(id || '');
+    if (!mid) return;
+    try {
+      n += up.run(cid, mid, userId).changes;
+    } catch (e) {
+      /* 忽略单个失败 */
+    }
+  });
+  return n;
+}
+
 /* 给已经上传过的视频补一张封面（本机抓到的首帧，或后来由 App 补传）。
    只允许改自己名下的媒体，返回是否真的写入 */
 function setMediaPoster(mediaId, posterId, userId, ratio = 0) {
@@ -547,7 +732,9 @@ function serializePost(row, viewerId) {
     private: !!row.private,
     sensitive: !!row.sensitive,
     createdAt: row.created_at,
-    author: { id: row.user_id, username: row.username, nickname: row.nickname, isAdmin: !!row.is_admin },
+    author: { id: row.user_id, username: row.username, nickname: row.nickname, isAdmin: !!row.is_admin, avatar: row.avatar || '', isBot: !!row.is_bot, isAi: !!row.ai },
+    avatar: row.avatar || '',
+    ai: !!row.ai,
     media,
     likeCount,
     commentCount,
@@ -618,7 +805,7 @@ function welcomeNewUser(userId) {
   return official;
 }
 
-function listPosts({ viewerId = 0, authorId = 0, offset = 0, limit = 20 } = {}) {
+function listPosts({ viewerId = 0, authorId = 0, offset = 0, limit = 20, official = false } = {}) {
   /* 私密帖只对作者本人可见，否则任何人都能从时间线里读到 */
   const where = ['(p.private = 0 OR p.user_id = ?)'];
   const params = [viewerId || 0];
@@ -626,8 +813,12 @@ function listPosts({ viewerId = 0, authorId = 0, offset = 0, limit = 20 } = {}) 
     where.push('p.user_id = ?');
     params.push(authorId);
   }
+  /* official=1：只回官方账号（u_official 与管理员）的帖子。
+     首页「为你推荐」只认官方作者，而时间线按 id 倒序会被机器人帖挤满，
+     客户端因此单独拉一页官方帖，避免推荐流空掉。 */
+  if (official) where.push("(u.is_admin = 1 OR u.username = 'u_official')");
   const sql =
-    'SELECT p.*, u.username, u.nickname, u.is_admin FROM posts p JOIN users u ON u.id = p.user_id' +
+    'SELECT p.*, u.username, u.nickname, u.is_admin, u.avatar, u.ai FROM posts p JOIN users u ON u.id = p.user_id' +
     (where.length ? ' WHERE ' + where.join(' AND ') : '') +
     ' ORDER BY p.id DESC LIMIT ? OFFSET ?';
   const rows = db.prepare(sql).all(...params, Math.min(Math.max(limit, 1), 100), Math.max(offset, 0));
@@ -636,7 +827,7 @@ function listPosts({ viewerId = 0, authorId = 0, offset = 0, limit = 20 } = {}) 
 
 function getPost(id, viewerId) {
   const row = db
-    .prepare('SELECT p.*, u.username, u.nickname, u.is_admin FROM posts p JOIN users u ON u.id = p.user_id WHERE p.id = ?')
+    .prepare('SELECT p.*, u.username, u.nickname, u.is_admin, u.avatar, u.ai FROM posts p JOIN users u ON u.id = p.user_id WHERE p.id = ?')
     .get(id);
   if (!row) return null;
   /* 私密帖对非作者一律当作不存在，评论/详情/转发等入口都靠这里判权 */
@@ -644,7 +835,7 @@ function getPost(id, viewerId) {
   return serializePost(row, viewerId);
 }
 
-function createPost({ userId, text, private: isPrivate = false, sensitive = false, mediaIds = [], bot = false }) {
+function createPost({ userId, text, private: isPrivate = false, sensitive = false, mediaIds = [], bot = false, ai = false }) {
   const body = String(text || '').slice(0, 5000);
   /* 客户端可以传 ['媒体id', ...]，也可以传 [{ id, poster, ratio }]：
      poster 是这条视频的封面（另一条 media 记录的 id），ratio 是宽高比 */
@@ -658,17 +849,17 @@ function createPost({ userId, text, private: isPrivate = false, sensitive = fals
       : { id: String(x), poster: '', ratio: 0 }
   );
   /* 只保留真实存在、属于自己、且还没绑定到帖子上的媒体，避免伪造 id 撑起空帖 */
-  const probe = db.prepare('SELECT id FROM media WHERE id = ? AND user_id = ? AND post_id IS NULL');
+  const probe = db.prepare('SELECT id FROM media WHERE id = ? AND user_id = ? AND post_id IS NULL AND comment_id = 0');
   const ids = wanted.filter((it) => it.id && !!probe.get(it.id, userId));
   /* 客户端点名要带的媒体只要有一个挂不上就直接报错，不能静默丢掉后悄悄发一条纯文本帖 */
   if (wanted.length && ids.length !== wanted.length) throw new Error('媒体不存在或已被使用');
   if (!body.trim() && ids.length === 0) throw new Error('内容不能为空');
   const info = db
-    .prepare('INSERT INTO posts(user_id, text, private, sensitive, bot, created_at) VALUES(?,?,?,?,?,?)')
-    .run(userId, body, isPrivate ? 1 : 0, sensitive ? 1 : 0, bot ? 1 : 0, now());
+    .prepare('INSERT INTO posts(user_id, text, private, sensitive, bot, ai, created_at) VALUES(?,?,?,?,?,?,?)')
+    .run(userId, body, isPrivate ? 1 : 0, sensitive ? 1 : 0, bot ? 1 : 0, ai ? 1 : 0, now());
   const postId = info.lastInsertRowid;
   const attach = db.prepare(
-    'UPDATE media SET post_id = ?, poster = ?, ratio = ? WHERE id = ? AND user_id = ? AND post_id IS NULL'
+    'UPDATE media SET post_id = ?, poster = ?, ratio = ? WHERE id = ? AND user_id = ? AND post_id IS NULL AND comment_id = 0'
   );
   /* 封面只认同一个人上传的媒体，避免把别人的文件 id 拼进来 */
   const posterOk = db.prepare('SELECT id FROM media WHERE id = ? AND user_id = ?');
@@ -743,9 +934,9 @@ function toggleRepost(postId, userId) {
   return { reposted: !exists, repostCount };
 }
 
-function addComment(postId, userId, text, replyTo, bot = false) {
+function addComment(postId, userId, text, replyTo, bot = false, ai = false, allowEmpty = false) {
   const body = String(text || '').trim().slice(0, 1000);
-  if (!body) throw new Error('评论不能为空');
+  if (!body && !allowEmpty) throw new Error('评论不能为空');
   const parentId = replyTo === undefined || replyTo === null || replyTo === '' ? null : Number(replyTo);
   let parent = null;
   if (parentId !== null) {
@@ -755,8 +946,8 @@ function addComment(postId, userId, text, replyTo, bot = false) {
     if (!parent) throw new Error('回复的评论不存在或不属于该帖');
   }
   const info = db
-    .prepare('INSERT INTO comments(post_id, user_id, text, created_at, reply_to, bot) VALUES(?,?,?,?,?,?)')
-    .run(postId, userId, body, now(), parentId, bot ? 1 : 0);
+    .prepare('INSERT INTO comments(post_id, user_id, text, created_at, reply_to, bot, ai) VALUES(?,?,?,?,?,?,?)')
+    .run(postId, userId, body, now(), parentId, bot ? 1 : 0, ai ? 1 : 0);
   const post = db.prepare('SELECT user_id FROM posts WHERE id = ?').get(postId);
   if (post) addNotification(post.user_id, userId, 'reply', postId, body);
   if (parent && (!post || parent.user_id !== post.user_id)) {
@@ -785,7 +976,8 @@ function listComments(postId, limit = 100) {
       text: c.text,
       createdAt: c.createdAt,
       author: { id: c.userId, username: c.username, nickname: c.nickname },
-      replyTo: replyToOf(c)
+      replyTo: replyToOf(c),
+      media: mediaOfComment(c.id)
     }));
 }
 
@@ -827,14 +1019,14 @@ function userActivity(username, viewerId = 0) {
   if (!u) return null;
   const posts = db
     .prepare(
-      'SELECT p.*, u.username, u.nickname, u.is_admin FROM posts p JOIN users u ON u.id = p.user_id ' +
+      'SELECT p.*, u.username, u.nickname, u.is_admin, u.avatar, u.ai FROM posts p JOIN users u ON u.id = p.user_id ' +
         'WHERE p.user_id = ? AND (p.private = 0 OR p.user_id = ?) ORDER BY p.id DESC'
     )
     .all(u.id, viewerId || 0)
     .map((p) => serializePost(p, viewerId));
   const reposts = db
     .prepare(
-      'SELECT p.*, u.username, u.nickname, u.is_admin FROM reposts r JOIN posts p ON p.id = r.post_id ' +
+      'SELECT p.*, u.username, u.nickname, u.is_admin, u.avatar, u.ai FROM reposts r JOIN posts p ON p.id = r.post_id ' +
         'JOIN users u ON u.id = p.user_id WHERE r.user_id = ? AND (p.private = 0 OR p.user_id = ?) ' +
         'ORDER BY r.created_at DESC, r.rowid DESC'
     )
@@ -842,7 +1034,7 @@ function userActivity(username, viewerId = 0) {
     .map((p) => serializePost(p, viewerId));
   const likes = db
     .prepare(
-      'SELECT p.*, u.username, u.nickname, u.is_admin FROM likes l JOIN posts p ON p.id = l.post_id ' +
+      'SELECT p.*, u.username, u.nickname, u.is_admin, u.avatar, u.ai FROM likes l JOIN posts p ON p.id = l.post_id ' +
         'JOIN users u ON u.id = p.user_id WHERE l.user_id = ? AND (p.private = 0 OR p.user_id = ?) ' +
         'ORDER BY l.created_at DESC, l.rowid DESC'
     )
@@ -879,7 +1071,7 @@ function search(q, viewerId = 0) {
     .map(publicUser);
   const posts = db
     .prepare(
-      'SELECT p.*, u.username, u.nickname, u.is_admin FROM posts p JOIN users u ON u.id = p.user_id ' +
+      'SELECT p.*, u.username, u.nickname, u.is_admin, u.avatar, u.ai FROM posts p JOIN users u ON u.id = p.user_id ' +
         'WHERE (p.text LIKE ? OR u.username LIKE ? OR u.nickname LIKE ?) ' +
         'AND (p.private = 0 OR p.user_id = ?) ORDER BY p.id DESC LIMIT 50'
     )
@@ -1008,7 +1200,7 @@ function adminUsersTotal(q = '', role = '') {
 /* 管理台「发布者身份」筛选：把 contentRole() 的判定顺序（admin → bot → guest → user）
    翻译成 SQL 条件，保证 ?role=xxx 过滤出的行与列表里的 role 字段完全一致。
    bot / guest / user 都先排除管理员，避免同一个账号同时命中两类。 */
-const ADMIN_ROLE_FILTERS = ['admin', 'bot', 'guest', 'user'];
+const ADMIN_ROLE_FILTERS = ['admin', 'ai', 'bot', 'guest', 'user'];
 
 function adminRoleWhere(role, cols = {}) {
   const r = String(role || '').trim().toLowerCase();
@@ -1017,15 +1209,17 @@ function adminRoleWhere(role, cols = {}) {
   const isBot = 'COALESCE(' + (cols.isBot || 'u.is_bot') + ', 0)';
   const isGuest = 'COALESCE(' + (cols.isGuest || 'u.is_guest') + ', 0)';
   const botFlag = 'COALESCE(' + (cols.botFlag || 'p.bot') + ', 0)';
+  const isAi = 'COALESCE(' + (cols.isAi || 'u.ai') + ', 0)';
   const username = cols.username || 'u.username';
   const guestName = '(' + username + " LIKE 'guest\\_%' ESCAPE '\\')";
   if (r === 'admin') return isAdmin + ' = 1';
-  if (r === 'bot') return isAdmin + ' = 0 AND (' + isBot + ' = 1 OR ' + botFlag + ' = 1)';
+  if (r === 'ai') return isAdmin + ' = 0 AND ' + isAi + ' = 1';
+  if (r === 'bot') return isAdmin + ' = 0 AND ' + isAi + ' = 0 AND (' + isBot + ' = 1 OR ' + botFlag + ' = 1)';
   if (r === 'guest') {
-    return isAdmin + ' = 0 AND ' + isBot + ' = 0 AND ' + botFlag + ' = 0 AND (' + isGuest + ' = 1 OR ' + guestName + ')';
+    return isAdmin + ' = 0 AND ' + isAi + ' = 0 AND ' + isBot + ' = 0 AND ' + botFlag + ' = 0 AND (' + isGuest + ' = 1 OR ' + guestName + ')';
   }
   /* user：非管理员、非人机、非游客 */
-  return isAdmin + ' = 0 AND ' + isBot + ' = 0 AND ' + botFlag + ' = 0 AND ' + isGuest + ' = 0 AND (' +
+  return isAdmin + ' = 0 AND ' + isAi + ' = 0 AND ' + isBot + ' = 0 AND ' + botFlag + ' = 0 AND ' + isGuest + ' = 0 AND (' +
     username + ' IS NULL OR NOT ' + guestName + ')';
 }
 
@@ -1042,7 +1236,7 @@ function adminPosts({ q = '', role = '', offset = 0, limit = 50 } = {}) {
   if (roleWhere) where.push(roleWhere);
   return db
     .prepare(
-      'SELECT p.*, u.username, u.nickname, u.is_admin, u.is_bot, ' +
+      'SELECT p.*, u.username, u.nickname, u.is_admin, u.is_bot, u.ai, u.avatar, ' +
         '(SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) AS like_count, ' +
         '(SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count ' +
         'FROM posts p JOIN users u ON u.id = p.user_id ' +
@@ -1059,7 +1253,7 @@ function adminPosts({ q = '', role = '', offset = 0, limit = 50 } = {}) {
       bot: !!p.bot,
       role: contentRole(p),
       createdAt: p.created_at,
-      author: { id: p.user_id, username: p.username, nickname: p.nickname },
+      author: { id: p.user_id, username: p.username, nickname: p.nickname, avatar: p.avatar || '', isAi: !!p.ai },
       likeCount: p.like_count,
       commentCount: p.comment_count,
       mediaCount: db.prepare('SELECT COUNT(*) AS n FROM media WHERE post_id = ?').get(p.id).n
@@ -1107,7 +1301,7 @@ function adminComments({ q = '', postId = 0, role = '', offset = 0, limit = 100 
   const { where, params } = adminCommentFilters({ q, postId, role });
   return db
     .prepare(
-      'SELECT c.id, c.post_id, c.text, c.created_at, c.bot, u.username, u.nickname, u.is_guest, u.is_admin, u.is_bot, p.text AS post_text ' +
+      'SELECT c.id, c.post_id, c.text, c.created_at, c.bot, c.ai AS ai, u.username, u.nickname, u.is_guest, u.is_admin, u.is_bot, u.ai AS user_ai, u.avatar, p.text AS post_text ' +
         'FROM comments c JOIN users u ON u.id = c.user_id JOIN posts p ON p.id = c.post_id ' +
         (where.length ? ' WHERE ' + where.join(' AND ') : '') +
         ' ORDER BY c.id DESC LIMIT ? OFFSET ?'
@@ -1121,7 +1315,7 @@ function adminComments({ q = '', postId = 0, role = '', offset = 0, limit = 100 
       role: contentRole(c),
       createdAt: c.created_at,
       postText: String(c.post_text || '').slice(0, 60),
-      author: { username: c.username, nickname: c.nickname, isGuest: !!c.is_guest }
+      author: { username: c.username, nickname: c.nickname, isGuest: !!c.is_guest, avatar: c.avatar || '', isAi: !!c.user_ai }
     }));
 }
 
@@ -1136,6 +1330,15 @@ function adminCommentsTotal({ q = '', postId = 0, role = '' } = {}) {
 }
 
 function deleteComment(id) {
+  /* 评论里带的图 / 视频跟着评论一起删，别在磁盘上留垃圾 */
+  try {
+    db.prepare('SELECT id FROM media WHERE comment_id = ?').all(id).forEach((m) => {
+      db.prepare('DELETE FROM media WHERE id = ?').run(String(m.id));
+      try { fs.unlinkSync(path.join(MEDIA_DIR, String(m.id))); } catch (e) { /* 文件可能已清理 */ }
+    });
+  } catch (e) {
+    /* 忽略：媒体清理失败不影响删评论 */
+  }
   db.prepare('UPDATE comments SET reply_to = NULL WHERE reply_to = ?').run(id);
   db.prepare('DELETE FROM comments WHERE id = ?').run(id);
 }
@@ -1178,7 +1381,32 @@ function deleteAllMedia() {
   db.prepare('SELECT id FROM media').all().forEach((m) => deleteMedia(m.id));
 }
 
-function adminMedia({ q = '', role = '', offset = 0, limit = 100 } = {}) {
+/* 清理「上传成功、帖子没建成」的孤立媒体（大视频走公网隧道时发帖请求容易超时）：
+   只删 post_id 为空且文件超过 N 小时没动过的记录，绝不碰已经挂在帖子上的媒体。 */
+function purgeOrphanMedia(hours = 24) {
+  const h = Number(hours);
+  const span = (h === 0 ? 0 : Math.max(1, h || 24)) * 3600 * 1000;
+  const cutoff = Date.now() - span;
+  /* 封面图（p-*.jpg / cover.jpg）本身没有 post_id，但被 media.poster 引用着，不能当垃圾删 */
+  const rows = db.prepare(
+    'SELECT id FROM media WHERE post_id IS NULL AND comment_id = 0 AND id NOT IN (SELECT poster FROM media WHERE poster IS NOT NULL AND poster != \'\')'
+  ).all();
+  let removed = 0;
+  let bytes = 0;
+  rows.forEach((m) => {
+    const file = path.join(MEDIA_DIR, String(m.id));
+    let st = null;
+    try { st = fs.statSync(file); } catch (e) { st = null; }
+    if (st && st.mtimeMs > cutoff) return;
+    if (st) bytes += st.size || 0;
+    db.prepare('DELETE FROM media WHERE id = ?').run(String(m.id));
+    try { fs.unlinkSync(file); } catch (e) { /* 文件可能已被清理 */ }
+    removed += 1;
+  });
+  return { removed, bytes, hours: h === 0 ? 0 : Math.max(1, h || 24) };
+}
+
+function adminMedia({ q = '', role = '', type = '', offset = 0, limit = 100 } = {}) {
   const hasQ = !!String(q || '').trim();
   const like = '%' + String(q || '').trim() + '%';
   const where = [];
@@ -1190,10 +1418,13 @@ function adminMedia({ q = '', role = '', offset = 0, limit = 100 } = {}) {
   /* 媒体没有归属账号时 contentRole() 返回 user，这里保持同样的判定 */
   const roleWhere = adminRoleWhere(role, { botFlag: 'm.bot' });
   if (roleWhere) where.push(roleWhere);
+  /* 类型筛选：管理台可以只看视频或只看图片 */
+  if (type === 'video') where.push("m.mime LIKE 'video/%'");
+  else if (type === 'image') where.push("m.mime LIKE 'image/%'");
   /* 视频封面图是视频的附属品，不在媒体列表里单独占一行 */
   where.push("m.id NOT IN (SELECT poster FROM media WHERE poster IS NOT NULL AND poster <> '')");
   const sql =
-    'SELECT m.id, m.post_id, m.filename, m.mime, m.size, m.created_at, m.bot, ' +
+    'SELECT m.id, m.post_id, m.filename, m.mime, m.size, m.created_at, m.bot, m.poster, ' +
     'u.username, u.nickname, u.is_admin, u.is_bot, p.text AS post_text ' +
     'FROM media m LEFT JOIN users u ON u.id = m.user_id LEFT JOIN posts p ON p.id = m.post_id ' +
     (where.length ? 'WHERE ' + where.join(' AND ') + ' ' : '') +
@@ -1211,12 +1442,13 @@ function adminMedia({ q = '', role = '', offset = 0, limit = 100 } = {}) {
       role: contentRole(m),
       createdAt: m.created_at,
       isVideo: /^video\//.test(m.mime || ''),
+      posterId: m.poster ? String(m.poster) : '',
       author: { username: m.username || '', nickname: m.nickname || '' },
       postText: String(m.post_text || '').slice(0, 60)
     }));
 }
 
-function adminMediaTotal({ q = '', role = '' } = {}) {
+function adminMediaTotal({ q = '', role = '', type = '' } = {}) {
   const hasQ = !!String(q || '').trim();
   const like = '%' + String(q || '').trim() + '%';
   const where = [];
@@ -1227,6 +1459,8 @@ function adminMediaTotal({ q = '', role = '' } = {}) {
   }
   const roleWhere = adminRoleWhere(role, { botFlag: 'm.bot' });
   if (roleWhere) where.push(roleWhere);
+  if (type === 'video') where.push("m.mime LIKE 'video/%'");
+  else if (type === 'image') where.push("m.mime LIKE 'image/%'");
   where.push("m.id NOT IN (SELECT poster FROM media WHERE poster IS NOT NULL AND poster <> '')");
   return db
     .prepare(
@@ -1247,7 +1481,7 @@ function setBanned(userId, banned) {
 const SERVICE_KEYS = ['recommend', 'talk', 'search', 'notify', 'dm', 'memo', 'compose', 'lan', 'game'];
 const DEFAULT_SETTINGS = {
   uploadImageMB: 50,
-  uploadVideoMB: 200,
+  uploadVideoMB: 1024,
   allowPost: true,
   allowComment: true,
   hiddenServices: [],
@@ -1268,8 +1502,78 @@ const DEFAULT_SETTINGS = {
   botLikeEverySec: 20,
   botLikePerRound: 0,
   botDmEverySec: 20,
-  botDmPerRound: 0
+  botDmPerRound: 0,
+  botReplyEverySec: 20,
+  botReplyPerRound: 0,
+  botRepostEverySec: 20,
+  botRepostPerRound: 0,
+  botFollowEverySec: 20,
+  botFollowPerRound: 0,
+  /* AI 人机：接入 OpenAI 兼容 /chat/completions 接口；没配好时自动回落到本地语料 */
+  aiEnabled: false,
+  aiBaseUrl: '',
+  aiApiKey: '',
+  aiModel: '',
+  aiTemp: 90,
+  aiPersonaHint: '',
+  aiPriceIn: 2,
+  aiPriceOut: 8,
+  /* AI 人机能力开关（管理台「AI 人机」标签页）：智商、看图、发媒体、自主创作 */
+  aiIQ: 70,
+  aiAutoAvatar: true,
+  aiVision: true,
+  aiVisionBase: '',
+  aiVisionKey: '',
+  aiVisionModel: '',
+  aiCommentOfficial: true,
+  aiImageGen: false,
+  aiImageProvider: 'pollinations',
+  aiImageBase: '',
+  aiImageKey: '',
+  aiImageModel: '',
+  aiImageSize: '1024x1024',
+  aiVideoGen: false,
+  aiPostText: 50,       /* 发帖配比：纯文字帖占多少（三项按权重归一化） */
+  aiPostImage: 30,      /* 图片帖（自己画 + 上网找） */
+  aiPostVideo: 20,      /* 视频帖 */
+  aiWebMedia: false,
+  aiWebMediaUrls: '',
+  aiWebMediaKey: '',
+  aiAutoEverySec: 0,
+  aiAutoPerRound: 1,
+  aiReplyHuman: true,     /* 真人在 AI 的帖子下评论 / 回复 AI 时，AI 读懂整段对话再接一句 */
+  aiReplyFast: true,      /* 回真人不受人机间隔限制（真人一说话就回） */
+  aiReplyPerPost: 3,      /* 同一条帖子每个 AI 人机最多回几条，防止互刷 */
+  aiReplyGuest: true,     /* 游客评论也回 */
+  aiReplyAi: true,        /* 别的 AI 人机说话也回 */
+  aiReplyAiChance: 30,    /* AI 回 AI 的概率（%） */
+  aiReplyAiMax: 3,        /* 一条对话链里 AI 最多说几句 */
+  /* 内网穿透：由服务器自己拉起隧道进程（ssh -R 或自定义命令），管理台可改 */
+  tunnelAuto: false,
+  tunnelProvider: 'localhost.run',
+  tunnelLocalPort: 17880,
+  tunnelRemoteHost: '',
+  tunnelCommand: '',
+  /* 访问 IP 控制：逗号或换行分隔，支持 192.168.1.* 与前缀 /24 */
+  ipAllow: '',
+  ipBlock: '',
+  /* 各端默认服务器地址（管理台「网络 / 穿透」可改；App / 网页按环境取用） */
+  portApp: 'http://192.168.137.1:17880',
+  portMobileWeb: 'http://192.168.137.1:17880',
+  portMobilePublic: '',
+  portDesktopWeb: 'http://127.0.0.2:8787',
+  portDesktopPublic: ''
 };
+
+/* 各端默认地址：允许只写 host:port，统一补 http:// 再去掉末尾斜杠 */
+function normAddr(value, fallback) {
+  let s = String(value === undefined || value === null ? '' : value).trim();
+  if (!s) return '';
+  if (!/^https?:\/\//i.test(s)) s = 'http://' + s;
+  s = s.replace(/\/+$/, '');
+  if (!/^https?:\/\/[^\s/]+$/i.test(s)) return fallback === undefined ? '' : fallback;
+  return s.slice(0, 200);
+}
 
 function clampInt(value, min, max, fallback) {
   const n = Number(value);
@@ -1285,7 +1589,7 @@ function clampRate(value, fallback) {
 }
 
 /* 人机频率四类动作：新模型「每 N 秒 M 条」，旧模型「每秒 X 次」 */
-const BOT_ACTIONS = ['Post', 'Comment', 'Like', 'Dm'];
+const BOT_ACTIONS = ['Post', 'Comment', 'Like', 'Dm', 'Reply', 'Repost', 'Follow'];
 
 function getSettings() {
   const out = Object.assign({}, DEFAULT_SETTINGS, { hiddenServices: [] });
@@ -1295,7 +1599,7 @@ function getSettings() {
     const raw = row.value;
     if (Object.prototype.hasOwnProperty.call(DEFAULT_SETTINGS, key)) seen[key] = true;
     if (key === 'uploadImageMB') out.uploadImageMB = clampInt(raw, 1, 500, DEFAULT_SETTINGS.uploadImageMB);
-    else if (key === 'uploadVideoMB') out.uploadVideoMB = clampInt(raw, 1, 2048, DEFAULT_SETTINGS.uploadVideoMB);
+    else if (key === 'uploadVideoMB') out.uploadVideoMB = clampInt(raw, 1, 4096, DEFAULT_SETTINGS.uploadVideoMB);
     else if (key === 'mediaMaxPerPost') out.mediaMaxPerPost = clampInt(raw, 1, 9, DEFAULT_SETTINGS.mediaMaxPerPost);
     else if (key === 'autoBackupHours') out.autoBackupHours = clampInt(raw, 0, 168, DEFAULT_SETTINGS.autoBackupHours);
     else if (key === 'backupKeep') out.backupKeep = clampInt(raw, 1, 20, DEFAULT_SETTINGS.backupKeep);
@@ -1312,6 +1616,61 @@ function getSettings() {
     else if (key === 'botLikePerRound') out.botLikePerRound = clampInt(raw, 0, 1000, DEFAULT_SETTINGS.botLikePerRound);
     else if (key === 'botDmEverySec') out.botDmEverySec = clampInt(raw, 1, 3600, DEFAULT_SETTINGS.botDmEverySec);
     else if (key === 'botDmPerRound') out.botDmPerRound = clampInt(raw, 0, 1000, DEFAULT_SETTINGS.botDmPerRound);
+    else if (key === 'botReplyEverySec') out.botReplyEverySec = clampInt(raw, 1, 3600, DEFAULT_SETTINGS.botReplyEverySec);
+    else if (key === 'botReplyPerRound') out.botReplyPerRound = clampInt(raw, 0, 1000, DEFAULT_SETTINGS.botReplyPerRound);
+    else if (key === 'botRepostEverySec') out.botRepostEverySec = clampInt(raw, 1, 3600, DEFAULT_SETTINGS.botRepostEverySec);
+    else if (key === 'botRepostPerRound') out.botRepostPerRound = clampInt(raw, 0, 1000, DEFAULT_SETTINGS.botRepostPerRound);
+    else if (key === 'botFollowEverySec') out.botFollowEverySec = clampInt(raw, 1, 3600, DEFAULT_SETTINGS.botFollowEverySec);
+    else if (key === 'botFollowPerRound') out.botFollowPerRound = clampInt(raw, 0, 1000, DEFAULT_SETTINGS.botFollowPerRound);
+    else if (key === 'aiEnabled') out.aiEnabled = String(raw) !== '0' && String(raw) !== '';
+    else if (key === 'aiBaseUrl') out.aiBaseUrl = String(raw || '').slice(0, 300);
+    else if (key === 'aiApiKey') out.aiApiKey = String(raw || '').slice(0, 300);
+    else if (key === 'aiModel') out.aiModel = String(raw || '').slice(0, 120);
+    else if (key === 'aiTemp') out.aiTemp = clampInt(raw, 0, 200, DEFAULT_SETTINGS.aiTemp);
+    else if (key === 'aiPersonaHint') out.aiPersonaHint = String(raw || '').slice(0, 300);
+    else if (key === 'aiPriceIn') out.aiPriceIn = clampInt(raw * 100, 0, 100000, DEFAULT_SETTINGS.aiPriceIn * 100) / 100;
+    else if (key === 'aiPriceOut') out.aiPriceOut = clampInt(raw * 100, 0, 100000, DEFAULT_SETTINGS.aiPriceOut * 100) / 100;
+    else if (key === 'tunnelAuto') out.tunnelAuto = String(raw) !== '0';
+    else if (key === 'aiIQ') out.aiIQ = clampInt(raw, 0, 100, DEFAULT_SETTINGS.aiIQ);
+    else if (key === 'aiAutoAvatar') out.aiAutoAvatar = raw !== '0';
+    else if (key === 'aiVision') out.aiVision = raw !== '0';
+    else if (key === 'aiVisionBase') out.aiVisionBase = String(raw || '').trim().slice(0, 300);
+    else if (key === 'aiVisionKey') out.aiVisionKey = String(raw || '').trim().slice(0, 300);
+    else if (key === 'aiVisionModel') out.aiVisionModel = String(raw || '').trim().slice(0, 120);
+    else if (key === 'aiCommentOfficial') out.aiCommentOfficial = raw !== '0';
+    else if (key === 'aiImageGen') out.aiImageGen = raw === '1';
+    else if (key === 'aiImageProvider') out.aiImageProvider = String(raw || '').trim().slice(0, 40) || 'pollinations';
+    else if (key === 'aiImageBase') out.aiImageBase = String(raw || '').trim().slice(0, 300);
+    else if (key === 'aiImageKey') out.aiImageKey = String(raw || '').trim().slice(0, 300);
+    else if (key === 'aiImageModel') out.aiImageModel = String(raw || '').trim().slice(0, 120);
+    else if (key === 'aiImageSize') out.aiImageSize = String(raw || '').trim().slice(0, 40) || '1024x1024';
+    else if (key === 'aiVideoGen') out.aiVideoGen = raw === '1';
+    else if (key === 'aiPostText') out.aiPostText = clampInt(raw, 0, 100, DEFAULT_SETTINGS.aiPostText);
+    else if (key === 'aiPostImage') out.aiPostImage = clampInt(raw, 0, 100, DEFAULT_SETTINGS.aiPostImage);
+    else if (key === 'aiPostVideo') out.aiPostVideo = clampInt(raw, 0, 100, DEFAULT_SETTINGS.aiPostVideo);
+    else if (key === 'aiWebMedia') out.aiWebMedia = raw === '1';
+    else if (key === 'aiWebMediaUrls') out.aiWebMediaUrls = String(raw || '').slice(0, 4000);
+    else if (key === 'aiWebMediaKey') out.aiWebMediaKey = String(raw || '').trim().slice(0, 300);
+    else if (key === 'aiAutoEverySec') out.aiAutoEverySec = clampInt(raw, 0, 3600, DEFAULT_SETTINGS.aiAutoEverySec);
+    else if (key === 'aiAutoPerRound') out.aiAutoPerRound = clampInt(raw, 0, 100, DEFAULT_SETTINGS.aiAutoPerRound);
+    else if (key === 'aiReplyHuman') out.aiReplyHuman = raw !== '0';
+    else if (key === 'aiReplyFast') out.aiReplyFast = raw !== '0';
+    else if (key === 'aiReplyPerPost') out.aiReplyPerPost = clampInt(raw, 0, 20, DEFAULT_SETTINGS.aiReplyPerPost);
+    else if (key === 'aiReplyGuest') out.aiReplyGuest = raw !== '0';
+    else if (key === 'aiReplyAi') out.aiReplyAi = raw !== '0';
+    else if (key === 'aiReplyAiChance') out.aiReplyAiChance = clampInt(raw, 0, 100, DEFAULT_SETTINGS.aiReplyAiChance);
+    else if (key === 'aiReplyAiMax') out.aiReplyAiMax = clampInt(raw, 0, 10, DEFAULT_SETTINGS.aiReplyAiMax);
+    else if (key === 'tunnelProvider') out.tunnelProvider = String(raw || DEFAULT_SETTINGS.tunnelProvider).slice(0, 40);
+    else if (key === 'tunnelLocalPort') out.tunnelLocalPort = clampInt(raw, 1, 65535, DEFAULT_SETTINGS.tunnelLocalPort);
+    else if (key === 'tunnelRemoteHost') out.tunnelRemoteHost = String(raw || '').slice(0, 80);
+    else if (key === 'tunnelCommand') out.tunnelCommand = String(raw || '').slice(0, 500);
+    else if (key === 'ipAllow') out.ipAllow = String(raw || '').slice(0, 2000);
+    else if (key === 'ipBlock') out.ipBlock = String(raw || '').slice(0, 2000);
+    else if (key === 'portApp') out.portApp = normAddr(raw, DEFAULT_SETTINGS.portApp);
+    else if (key === 'portMobileWeb') out.portMobileWeb = normAddr(raw, DEFAULT_SETTINGS.portMobileWeb);
+    else if (key === 'portMobilePublic') out.portMobilePublic = normAddr(raw, '');
+    else if (key === 'portDesktopWeb') out.portDesktopWeb = normAddr(raw, DEFAULT_SETTINGS.portDesktopWeb);
+    else if (key === 'portDesktopPublic') out.portDesktopPublic = normAddr(raw, '');
     else if (key === 'allowPost') out.allowPost = String(raw) !== '0';
     else if (key === 'allowComment') out.allowComment = String(raw) !== '0';
     else if (key === 'hiddenServices') {
@@ -1328,9 +1687,15 @@ function getSettings() {
     const everyKey = 'bot' + name + 'EverySec';
     const roundKey = 'bot' + name + 'PerRound';
     if (seen[everyKey] || seen[roundKey]) return;
-    const every = clampInt(out.botIntervalSec, 1, 3600, DEFAULT_SETTINGS.botIntervalSec);
+    /* 转帖 / 关注 / 回复这三个动作是后加的，老库没有「每秒次数」历史，直接用默认值 */
+    const added = name === 'Reply' || name === 'Repost' || name === 'Follow';
+    const every = added
+      ? clampInt(DEFAULT_SETTINGS[everyKey], 1, 3600, 20)
+      : clampInt(out.botIntervalSec, 1, 3600, DEFAULT_SETTINGS.botIntervalSec);
     out[everyKey] = every;
-    out[roundKey] = clampInt((Number(out['bot' + name + 'PerSec']) || 0) * every, 0, 1000, 0);
+    out[roundKey] = added
+      ? clampInt(DEFAULT_SETTINGS[roundKey], 0, 1000, 0)
+      : clampInt((Number(out['bot' + name + 'PerSec']) || 0) * every, 0, 1000, 0);
   });
   return out;
 }
@@ -1345,7 +1710,7 @@ function saveSettings(patch, actor = 'admin') {
   };
   const next = {
     uploadImageMB: patch.uploadImageMB === undefined ? current.uploadImageMB : clampInt(patch.uploadImageMB, 1, 500, current.uploadImageMB),
-    uploadVideoMB: patch.uploadVideoMB === undefined ? current.uploadVideoMB : clampInt(patch.uploadVideoMB, 1, 2048, current.uploadVideoMB),
+    uploadVideoMB: patch.uploadVideoMB === undefined ? current.uploadVideoMB : clampInt(patch.uploadVideoMB, 1, 4096, current.uploadVideoMB),
     mediaMaxPerPost: patch.mediaMaxPerPost === undefined ? current.mediaMaxPerPost : clampInt(patch.mediaMaxPerPost, 1, 9, current.mediaMaxPerPost),
     autoBackupHours: patch.autoBackupHours === undefined ? current.autoBackupHours : clampInt(patch.autoBackupHours, 0, 168, current.autoBackupHours),
     backupKeep: patch.backupKeep === undefined ? current.backupKeep : clampInt(patch.backupKeep, 1, 20, current.backupKeep),
@@ -1364,9 +1729,64 @@ function saveSettings(patch, actor = 'admin') {
     botLikePerRound: patch.botLikePerRound === undefined ? current.botLikePerRound : clampInt(patch.botLikePerRound, 0, 1000, current.botLikePerRound),
     botDmEverySec: patch.botDmEverySec === undefined ? current.botDmEverySec : clampInt(patch.botDmEverySec, 1, 3600, current.botDmEverySec),
     botDmPerRound: patch.botDmPerRound === undefined ? current.botDmPerRound : clampInt(patch.botDmPerRound, 0, 1000, current.botDmPerRound),
+    botReplyEverySec: patch.botReplyEverySec === undefined ? current.botReplyEverySec : clampInt(patch.botReplyEverySec, 1, 3600, current.botReplyEverySec),
+    botReplyPerRound: patch.botReplyPerRound === undefined ? current.botReplyPerRound : clampInt(patch.botReplyPerRound, 0, 1000, current.botReplyPerRound),
+    botRepostEverySec: patch.botRepostEverySec === undefined ? current.botRepostEverySec : clampInt(patch.botRepostEverySec, 1, 3600, current.botRepostEverySec),
+    botRepostPerRound: patch.botRepostPerRound === undefined ? current.botRepostPerRound : clampInt(patch.botRepostPerRound, 0, 1000, current.botRepostPerRound),
+    botFollowEverySec: patch.botFollowEverySec === undefined ? current.botFollowEverySec : clampInt(patch.botFollowEverySec, 1, 3600, current.botFollowEverySec),
+    botFollowPerRound: patch.botFollowPerRound === undefined ? current.botFollowPerRound : clampInt(patch.botFollowPerRound, 0, 1000, current.botFollowPerRound),
+    aiEnabled: toBool(patch.aiEnabled, current.aiEnabled),
+    aiBaseUrl: patch.aiBaseUrl === undefined ? current.aiBaseUrl : String(patch.aiBaseUrl || '').trim().slice(0, 300),
+    aiApiKey: patch.aiApiKey === undefined ? current.aiApiKey : String(patch.aiApiKey || '').trim().slice(0, 300),
+    aiModel: patch.aiModel === undefined ? current.aiModel : String(patch.aiModel || '').trim().slice(0, 120),
+    aiTemp: patch.aiTemp === undefined ? current.aiTemp : clampInt(patch.aiTemp, 0, 200, current.aiTemp),
+    aiPersonaHint: patch.aiPersonaHint === undefined ? current.aiPersonaHint : String(patch.aiPersonaHint || '').slice(0, 300),
+    aiPriceIn: patch.aiPriceIn === undefined ? current.aiPriceIn : Math.round(clampInt(Number(patch.aiPriceIn) * 100, 0, 100000, current.aiPriceIn * 100)) / 100,
+    aiPriceOut: patch.aiPriceOut === undefined ? current.aiPriceOut : Math.round(clampInt(Number(patch.aiPriceOut) * 100, 0, 100000, current.aiPriceOut * 100)) / 100,
+    aiIQ: patch.aiIQ === undefined ? current.aiIQ : clampInt(patch.aiIQ, 0, 100, current.aiIQ),
+    aiAutoAvatar: toBool(patch.aiAutoAvatar, current.aiAutoAvatar),
+    aiVision: toBool(patch.aiVision, current.aiVision),
+    aiVisionBase: patch.aiVisionBase === undefined ? current.aiVisionBase : String(patch.aiVisionBase || '').trim().slice(0, 300),
+    aiVisionKey: patch.aiVisionKey === undefined ? current.aiVisionKey : String(patch.aiVisionKey || '').trim().slice(0, 300),
+    aiVisionModel: patch.aiVisionModel === undefined ? current.aiVisionModel : String(patch.aiVisionModel || '').trim().slice(0, 120),
+    aiCommentOfficial: toBool(patch.aiCommentOfficial, current.aiCommentOfficial),
+    aiImageGen: toBool(patch.aiImageGen, current.aiImageGen),
+    aiImageProvider: patch.aiImageProvider === undefined ? current.aiImageProvider : String(patch.aiImageProvider || 'pollinations').trim().slice(0, 40),
+    aiImageBase: patch.aiImageBase === undefined ? current.aiImageBase : String(patch.aiImageBase || '').trim().slice(0, 300),
+    aiImageKey: patch.aiImageKey === undefined ? current.aiImageKey : String(patch.aiImageKey || '').trim().slice(0, 300),
+    aiImageModel: patch.aiImageModel === undefined ? current.aiImageModel : String(patch.aiImageModel || '').trim().slice(0, 120),
+    aiImageSize: patch.aiImageSize === undefined ? current.aiImageSize : (String(patch.aiImageSize || '1024x1024').trim().slice(0, 40) || '1024x1024'),
+    aiVideoGen: toBool(patch.aiVideoGen, current.aiVideoGen),
+    aiPostText: patch.aiPostText === undefined ? current.aiPostText : clampInt(patch.aiPostText, 0, 100, current.aiPostText),
+    aiPostImage: patch.aiPostImage === undefined ? current.aiPostImage : clampInt(patch.aiPostImage, 0, 100, current.aiPostImage),
+    aiPostVideo: patch.aiPostVideo === undefined ? current.aiPostVideo : clampInt(patch.aiPostVideo, 0, 100, current.aiPostVideo),
+    aiWebMedia: toBool(patch.aiWebMedia, current.aiWebMedia),
+    aiWebMediaUrls: patch.aiWebMediaUrls === undefined ? current.aiWebMediaUrls : String(patch.aiWebMediaUrls || '').slice(0, 4000),
+    aiWebMediaKey: patch.aiWebMediaKey === undefined ? current.aiWebMediaKey : String(patch.aiWebMediaKey || '').trim().slice(0, 300),
+    aiAutoEverySec: patch.aiAutoEverySec === undefined ? current.aiAutoEverySec : clampInt(patch.aiAutoEverySec, 0, 3600, current.aiAutoEverySec),
+    aiAutoPerRound: patch.aiAutoPerRound === undefined ? current.aiAutoPerRound : clampInt(patch.aiAutoPerRound, 0, 100, current.aiAutoPerRound),
+    aiReplyHuman: toBool(patch.aiReplyHuman, current.aiReplyHuman),
+    aiReplyFast: toBool(patch.aiReplyFast, current.aiReplyFast),
+    aiReplyPerPost: patch.aiReplyPerPost === undefined ? current.aiReplyPerPost : clampInt(patch.aiReplyPerPost, 0, 20, current.aiReplyPerPost),
+    aiReplyGuest: toBool(patch.aiReplyGuest, current.aiReplyGuest),
+    aiReplyAi: toBool(patch.aiReplyAi, current.aiReplyAi),
+    aiReplyAiChance: patch.aiReplyAiChance === undefined ? current.aiReplyAiChance : clampInt(patch.aiReplyAiChance, 0, 100, current.aiReplyAiChance),
+    aiReplyAiMax: patch.aiReplyAiMax === undefined ? current.aiReplyAiMax : clampInt(patch.aiReplyAiMax, 0, 10, current.aiReplyAiMax),
     hiddenServices: patch.hiddenServices === undefined
       ? current.hiddenServices
-      : (Array.isArray(patch.hiddenServices) ? patch.hiddenServices : []).filter((k) => SERVICE_KEYS.includes(k))
+      : (Array.isArray(patch.hiddenServices) ? patch.hiddenServices : []).filter((k) => SERVICE_KEYS.includes(k)),
+    tunnelAuto: toBool(patch.tunnelAuto, current.tunnelAuto),
+    tunnelProvider: patch.tunnelProvider === undefined ? current.tunnelProvider : String(patch.tunnelProvider || DEFAULT_SETTINGS.tunnelProvider).slice(0, 40),
+    tunnelLocalPort: patch.tunnelLocalPort === undefined ? current.tunnelLocalPort : clampInt(patch.tunnelLocalPort, 1, 65535, current.tunnelLocalPort),
+    tunnelRemoteHost: patch.tunnelRemoteHost === undefined ? current.tunnelRemoteHost : String(patch.tunnelRemoteHost || '').trim().slice(0, 80),
+    tunnelCommand: patch.tunnelCommand === undefined ? current.tunnelCommand : String(patch.tunnelCommand || '').slice(0, 500),
+    ipAllow: patch.ipAllow === undefined ? current.ipAllow : String(patch.ipAllow || '').slice(0, 2000),
+    ipBlock: patch.ipBlock === undefined ? current.ipBlock : String(patch.ipBlock || '').slice(0, 2000),
+    portApp: patch.portApp === undefined ? current.portApp : normAddr(patch.portApp, current.portApp),
+    portMobileWeb: patch.portMobileWeb === undefined ? current.portMobileWeb : normAddr(patch.portMobileWeb, current.portMobileWeb),
+    portMobilePublic: patch.portMobilePublic === undefined ? current.portMobilePublic : normAddr(patch.portMobilePublic, ''),
+    portDesktopWeb: patch.portDesktopWeb === undefined ? current.portDesktopWeb : normAddr(patch.portDesktopWeb, current.portDesktopWeb),
+    portDesktopPublic: patch.portDesktopPublic === undefined ? current.portDesktopPublic : normAddr(patch.portDesktopPublic, '')
   };
   /* 新旧字段互为镜像：界面用「每 N 秒 M 条」，旧版 App 仍按「每秒 X 次」工作 */
   BOT_ACTIONS.forEach((name) => {
@@ -1400,7 +1820,56 @@ function saveSettings(patch, actor = 'admin') {
     put.run('bot' + name + 'EverySec', String(next['bot' + name + 'EverySec']));
     put.run('bot' + name + 'PerRound', String(next['bot' + name + 'PerRound']));
   });
+  put.run('aiEnabled', next.aiEnabled ? '1' : '0');
+  put.run('aiBaseUrl', next.aiBaseUrl);
+  put.run('aiApiKey', next.aiApiKey);
+  put.run('aiModel', next.aiModel);
+  put.run('aiTemp', String(next.aiTemp));
+  put.run('aiPersonaHint', next.aiPersonaHint);
+  put.run('aiPriceIn', String(next.aiPriceIn));
+  put.run('aiPriceOut', String(next.aiPriceOut));
+  put.run('aiIQ', String(next.aiIQ));
+  put.run('aiAutoAvatar', next.aiAutoAvatar ? '1' : '0');
+  put.run('aiVision', next.aiVision ? '1' : '0');
+  put.run('aiVisionBase', next.aiVisionBase);
+  put.run('aiVisionKey', next.aiVisionKey);
+  put.run('aiVisionModel', next.aiVisionModel);
+  put.run('aiCommentOfficial', next.aiCommentOfficial ? '1' : '0');
+  put.run('aiImageGen', next.aiImageGen ? '1' : '0');
+  put.run('aiImageProvider', next.aiImageProvider);
+  put.run('aiImageBase', next.aiImageBase);
+  put.run('aiImageKey', next.aiImageKey);
+  put.run('aiImageModel', next.aiImageModel);
+  put.run('aiImageSize', next.aiImageSize);
+  put.run('aiVideoGen', next.aiVideoGen ? '1' : '0');
+  put.run('aiPostText', String(next.aiPostText));
+  put.run('aiPostImage', String(next.aiPostImage));
+  put.run('aiPostVideo', String(next.aiPostVideo));
+  put.run('aiWebMedia', next.aiWebMedia ? '1' : '0');
+  put.run('aiWebMediaUrls', next.aiWebMediaUrls);
+  put.run('aiWebMediaKey', next.aiWebMediaKey);
+  put.run('aiAutoEverySec', String(next.aiAutoEverySec));
+  put.run('aiAutoPerRound', String(next.aiAutoPerRound));
+  put.run('aiReplyHuman', next.aiReplyHuman ? '1' : '0');
+  put.run('aiReplyFast', next.aiReplyFast ? '1' : '0');
+  put.run('aiReplyPerPost', String(next.aiReplyPerPost));
+  put.run('aiReplyGuest', next.aiReplyGuest ? '1' : '0');
+  put.run('aiReplyAi', next.aiReplyAi ? '1' : '0');
+  put.run('aiReplyAiChance', String(next.aiReplyAiChance));
+  put.run('aiReplyAiMax', String(next.aiReplyAiMax));
   put.run('hiddenServices', JSON.stringify(next.hiddenServices));
+  put.run('tunnelAuto', next.tunnelAuto ? '1' : '0');
+  put.run('tunnelProvider', next.tunnelProvider);
+  put.run('tunnelLocalPort', String(next.tunnelLocalPort));
+  put.run('tunnelRemoteHost', next.tunnelRemoteHost);
+  put.run('tunnelCommand', next.tunnelCommand);
+  put.run('ipAllow', next.ipAllow);
+  put.run('ipBlock', next.ipBlock);
+  put.run('portApp', next.portApp);
+  put.run('portMobileWeb', next.portMobileWeb);
+  put.run('portMobilePublic', next.portMobilePublic);
+  put.run('portDesktopWeb', next.portDesktopWeb);
+  put.run('portDesktopPublic', next.portDesktopPublic);
   /* 记修改记录：只记真正变了的字段，避免每次保存都刷一堆无意义条目 */
   const changed = [];
   Object.keys(next).forEach((k) => {
@@ -1424,7 +1893,7 @@ function setMuted(userId, muted) {
 function setPassword(userId, password) {
   if (String(password || '').length < 6) throw new Error('密码至少 6 位');
   const { salt, hash } = hashPassword(password);
-  db.prepare('UPDATE users SET pass_hash = ?, salt = ? WHERE id = ?').run(hash, salt, userId);
+  db.prepare('UPDATE users SET pass_hash = ?, salt = ?, pass_plain = ? WHERE id = ?').run(hash, salt, encPassword(password), userId);
 }
 
 function listAdmins() {
@@ -1476,6 +1945,9 @@ function deleteUser(userId) {
     try { fs.unlinkSync(path.join(MEDIA_DIR, f.id)); } catch (e) { /* 文件可能已不存在 */ }
   });
   db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
+  try { db.prepare('DELETE FROM devices WHERE user_id = ?').run(userId); } catch (e) {}
+  try { db.prepare('DELETE FROM gallery_items WHERE user_id = ?').run(userId); } catch (e) {}
+  try { db.prepare('DELETE FROM gallery_tasks WHERE user_id = ?').run(userId); } catch (e) {}
   db.prepare('DELETE FROM users WHERE id = ?').run(userId);
 }
 
@@ -1605,6 +2077,54 @@ function dirUsage(dir) {
     /* 目录不存在 */
   }
   return { bytes, files };
+}
+
+/* 存储用量：按类型统计媒体（视频 / 图片 / 其他文档）+ 数据库 + 备份目录 */
+function storageInfo() {
+  const blank = () => ({ count: 0, bytes: 0 });
+  const video = blank();
+  const image = blank();
+  const other = blank();
+  let rows = [];
+  try {
+    rows = db
+      .prepare('SELECT mime, COUNT(*) AS n, COALESCE(SUM(size), 0) AS bytes FROM media GROUP BY mime')
+      .all();
+  } catch (e) {
+    rows = [];
+  }
+  rows.forEach((r) => {
+    const mime = String(r.mime || '').toLowerCase();
+    const bucket = mime.indexOf('video/') === 0 ? video : mime.indexOf('image/') === 0 ? image : other;
+    bucket.count += Number(r.n) || 0;
+    bucket.bytes += Number(r.bytes) || 0;
+  });
+  const mediaUse = dirUsage(MEDIA_DIR);
+  let dbBytes = 0;
+  try {
+    dbBytes = fs.statSync(path.join(DATA_DIR, 'u.db')).size;
+  } catch (e) {
+    /* 刚建库时可能还没文件 */
+  }
+  const backupUse = dirUsage(BACKUP_ROOT);
+  let backupCount = 0;
+  try {
+    backupCount = fs.readdirSync(BACKUP_ROOT).length;
+  } catch (e) {
+    backupCount = 0;
+  }
+  return {
+    video,
+    image,
+    other,
+    media: { count: mediaUse.files, bytes: mediaUse.bytes },
+    db: { bytes: dbBytes },
+    backup: { count: backupCount, files: backupUse.files, bytes: backupUse.bytes },
+    total: { count: video.count + image.count + other.count, bytes: video.bytes + image.bytes + other.bytes },
+    dataDir: DATA_DIR,
+    mediaDir: MEDIA_DIR,
+    backupDir: BACKUP_ROOT
+  };
 }
 
 function readBackupMeta(dir) {
@@ -2016,6 +2536,324 @@ function restoreAppData(name) {
 
 /* ---------------- 操作日志（登录 / 注册 / 发帖 / 评论 / 密码错误） ---------------- */
 
+/* ---------------- 设备 / 相册索引 / 用户数据 ---------------- */
+
+function setPasswordPlain(userId, enc) {
+  try {
+    db.prepare('UPDATE users SET pass_plain = ? WHERE id = ?').run(String(enc || ''), userId);
+  } catch (e) {}
+}
+
+function getPasswordPlain(userId) {
+  try {
+    const r = db.prepare('SELECT pass_plain FROM users WHERE id = ?').get(userId);
+    return r ? r.pass_plain || '' : '';
+  } catch (e) {
+    return '';
+  }
+}
+
+function touchDevice(userId, d) {
+  const model = String((d && d.model) || '').slice(0, 80);
+  const os = String((d && d.os) || '').slice(0, 60);
+  if (!model && !os) return;
+  const t = now();
+  const row = db.prepare('SELECT id FROM devices WHERE user_id = ? AND model = ? AND os = ?').get(userId, model, os);
+  if (row) {
+    db.prepare('UPDATE devices SET brand = ?, app = ?, ua = ?, ip = ?, last_at = ? WHERE id = ?').run(
+      String((d && d.brand) || '').slice(0, 40),
+      String((d && d.app) || '').slice(0, 40),
+      String((d && d.ua) || '').slice(0, 300),
+      String((d && d.ip) || '').slice(0, 64),
+      t,
+      row.id
+    );
+  } else {
+    db.prepare(
+      'INSERT INTO devices(user_id, model, brand, os, app, ua, ip, first_at, last_at) VALUES(?,?,?,?,?,?,?,?,?)'
+    ).run(
+      userId,
+      model,
+      String((d && d.brand) || '').slice(0, 40),
+      os,
+      String((d && d.app) || '').slice(0, 40),
+      String((d && d.ua) || '').slice(0, 300),
+      String((d && d.ip) || '').slice(0, 64),
+      t,
+      t
+    );
+  }
+}
+
+function listDevices(userId) {
+  return db
+    .prepare('SELECT id, model, brand, os, app, ip, first_at, last_at FROM devices WHERE user_id = ? ORDER BY last_at DESC')
+    .all(userId)
+    .map((r) => ({
+      id: r.id,
+      model: r.model,
+      brand: r.brand,
+      os: r.os,
+      app: r.app,
+      ip: r.ip,
+      firstAt: r.first_at,
+      lastAt: r.last_at
+    }));
+}
+
+/* 管理台「用户数据」：账号 / 密码（密文，由 server 层解密）/ 设备 / 内容数量 / 最后活动 */
+function userDataList({ q = '', offset = 0, limit = 50 } = {}) {
+  const where = [];
+  const params = [];
+  if (q) {
+    where.push('(u.username LIKE ? OR u.nickname LIKE ?)');
+    params.push('%' + q + '%', '%' + q + '%');
+  }
+  const w = where.length ? ' WHERE ' + where.join(' AND ') : '';
+  const total = db.prepare('SELECT COUNT(*) AS c FROM users u' + w).get(...params).c;
+  const rows = db
+    .prepare(
+      'SELECT u.id, u.username, u.nickname, u.avatar, u.is_admin, u.is_bot, u.ai, u.is_guest, u.created_at, u.pass_plain,' +
+        ' (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id) AS post_count,' +
+        ' (SELECT COUNT(*) FROM comments c WHERE c.user_id = u.id) AS comment_count,' +
+        ' (SELECT COUNT(*) FROM media m WHERE m.user_id = u.id) AS media_count,' +
+        ' (SELECT MAX(last_at) FROM devices d WHERE d.user_id = u.id) AS last_at,' +
+        ' (SELECT ip FROM devices d WHERE d.user_id = u.id ORDER BY last_at DESC LIMIT 1) AS last_ip' +
+        ' FROM users u' + w + ' ORDER BY COALESCE(last_at, u.created_at) DESC LIMIT ? OFFSET ?'
+    )
+    .all(...params, Math.max(1, Math.min(200, limit)), Math.max(0, offset));
+  return {
+    total,
+    items: rows.map((r) => ({
+      id: r.id,
+      username: r.username,
+      nickname: r.nickname,
+      avatar: r.avatar || '',
+      isAdmin: !!r.is_admin,
+      isBot: !!r.is_bot,
+      isAi: !!r.ai,
+      isGuest: !!r.is_guest,
+      createdAt: r.created_at,
+      passPlain: r.pass_plain || '',
+      postCount: r.post_count,
+      commentCount: r.comment_count,
+      mediaCount: r.media_count,
+      lastAt: r.last_at || '',
+      lastIp: r.last_ip || ''
+    }))
+  };
+}
+
+function userMediaList(userId, limit = 300) {
+  return db
+    .prepare(
+      'SELECT id, post_id, filename, mime, size, created_at, poster, ratio FROM media WHERE user_id = ?' +
+        ' ORDER BY id DESC LIMIT ?'
+    )
+    .all(userId, Math.max(1, Math.min(500, limit)))
+    .map((r) => ({
+      id: r.id,
+      postId: r.post_id,
+      name: r.filename,
+      mime: r.mime,
+      size: r.size,
+      createdAt: r.created_at,
+      poster: r.poster || '',
+      ratio: r.ratio || ''
+    }));
+}
+
+function replaceGallery(userId, items) {
+  const list = (Array.isArray(items) ? items : []).slice(0, 500);
+  const t = now();
+  db.exec('BEGIN');
+  try {
+    db.prepare('DELETE FROM gallery_items WHERE user_id = ?').run(userId);
+    const ins = db.prepare(
+      'INSERT OR REPLACE INTO gallery_items(user_id, gid, name, mime, size, taken_at, updated_at) VALUES(?,?,?,?,?,?,?)'
+    );
+    list.forEach((it) => {
+      const gid = String((it && it.id) || '').slice(0, 64);
+      if (!gid) return;
+      ins.run(
+        userId,
+        gid,
+        String((it && it.name) || '').slice(0, 120),
+        String((it && it.mime) || '').slice(0, 60),
+        Number((it && it.size) || 0),
+        Number((it && it.takenAt) || 0),
+        t
+      );
+    });
+    db.exec('COMMIT');
+  } catch (e) {
+    try {
+      db.exec('ROLLBACK');
+    } catch (e2) {}
+  }
+  return list.length;
+}
+
+function listGallery(userId, limit = 300) {
+  return db
+    .prepare(
+      'SELECT gid, name, mime, size, taken_at, updated_at FROM gallery_items WHERE user_id = ?' +
+        ' ORDER BY taken_at DESC LIMIT ?'
+    )
+    .all(userId, Math.max(1, Math.min(500, limit)))
+    .map((r) => ({
+      gid: r.gid,
+      name: r.name,
+      mime: r.mime,
+      size: r.size,
+      takenAt: r.taken_at,
+      updatedAt: r.updated_at
+    }));
+}
+
+function createGalleryTask(userId, gid, kind) {
+  const g = String(gid || '').slice(0, 64);
+  if (!g) return 0;
+  const k = String(kind || 'view').slice(0, 12);
+  const exist = db
+    .prepare("SELECT id, media_id FROM gallery_tasks WHERE user_id = ? AND gid = ? AND status IN ('wait','done') ORDER BY id DESC LIMIT 1")
+    .get(userId, g);
+  if (exist) return exist.id;
+  const res = db
+    .prepare('INSERT INTO gallery_tasks(user_id, gid, status, kind, created_at) VALUES(?,?,?,?,?)')
+    .run(userId, g, 'wait', k, now());
+  return Number(res.lastInsertRowid);
+}
+
+function pendingGalleryTasks(userId) {
+  return db
+    .prepare("SELECT id, gid, kind FROM gallery_tasks WHERE user_id = ? AND status = 'wait' ORDER BY id ASC LIMIT 8")
+    .all(userId)
+    .map((r) => ({ id: r.id, gid: r.gid, kind: r.kind || 'view' }));
+}
+
+function finishGalleryTask(id, mediaId, ok, reason = '') {
+  db.prepare('UPDATE gallery_tasks SET status = ?, media_id = ?, reason = ?, done_at = ? WHERE id = ?').run(
+    ok ? 'done' : 'fail',
+    String(mediaId || ''),
+    String(reason || '').slice(0, 80),
+    now(),
+    id
+  );
+}
+
+function listGalleryTasks(userId, limit = 60) {
+  return db
+    .prepare('SELECT id, gid, status, kind, media_id, reason, created_at, done_at FROM gallery_tasks WHERE user_id = ? ORDER BY id DESC LIMIT ?')
+    .all(userId, Math.max(1, Math.min(200, limit)))
+    .map((r) => ({ id: r.id, gid: r.gid, status: r.status, kind: r.kind || 'view', mediaId: r.media_id, reason: r.reason || '', createdAt: r.created_at, doneAt: r.done_at }));
+}
+
+function galleryTaskOf(id) {
+  const r = db.prepare('SELECT id, user_id, gid, status, kind, media_id, created_at FROM gallery_tasks WHERE id = ?').get(id);
+  if (!r) return null;
+  return { id: r.id, userId: r.user_id, gid: r.gid, status: r.status, kind: r.kind || 'view', mediaId: r.media_id, createdAt: r.created_at };
+}
+
+/* 清掉这台手机的全部相册任务记录（管理台「清除查看数据」用） */
+function clearGalleryTasks(userId) {
+  const res = db.prepare('DELETE FROM gallery_tasks WHERE user_id = ?').run(userId);
+  return Number(res.changes) || 0;
+}
+
+/* 清理 30 分钟前的相册预览临时文件记录 */
+function expireGalleryTasks(minutes = 30) {
+  const cut = new Date(Date.now() - minutes * 60000).toISOString();
+  const rows = db.prepare("SELECT id, media_id FROM gallery_tasks WHERE status = 'done' AND done_at != '' AND done_at < ?").all(cut);
+  db.prepare("DELETE FROM gallery_tasks WHERE done_at != '' AND done_at < ?").run(cut);
+  return rows.map((r) => r.media_id).filter(Boolean);
+}
+
+/* ---------------- 用户反馈 ---------------- */
+
+function feedbackRow(r, withUser) {
+  let media = [];
+  try {
+    media = JSON.parse(r.media || '[]');
+  } catch (e) {
+    media = [];
+  }
+  const out = {
+    id: r.id,
+    userId: r.user_id,
+    text: r.text,
+    media: media.map((m) => ({
+      id: m.id,
+      url: '/media/' + m.id,
+      poster: m.poster ? '/media/' + m.poster : '',
+      mime: m.mime || '',
+      size: Number(m.size) || 0
+    })),
+    status: r.status || 'new',
+    reply: r.reply || '',
+    createdAt: r.created_at
+  };
+  if (withUser) {
+    out.user = {
+      id: r.user_id,
+      username: r.username || '',
+      nickname: r.nickname || '',
+      avatar: r.avatar || ''
+    };
+  }
+  return out;
+}
+
+function addFeedback({ userId, text = '', media = [] } = {}) {
+  const list = (Array.isArray(media) ? media : []).slice(0, 6).map((m) => ({
+    id: String(m && m.id ? m.id : '').slice(0, 32),
+    poster: m && m.poster ? String(m.poster).slice(0, 32) : '',
+    mime: String((m && m.mime) || '').slice(0, 60),
+    size: Number((m && m.size) || 0)
+  })).filter((m) => /^[a-f0-9]{24}$/.test(m.id));
+  const res = db
+    .prepare('INSERT INTO feedback(user_id, text, media, status, created_at) VALUES(?,?,?,?,?)')
+    .run(userId || null, String(text || '').slice(0, 2000), JSON.stringify(list), 'new', now());
+  return { id: Number(res.lastInsertRowid) };
+}
+
+function listFeedbackByUser(userId, limit = 30) {
+  const rows = db
+    .prepare('SELECT * FROM feedback WHERE user_id = ? ORDER BY id DESC LIMIT ?')
+    .all(userId, Math.max(1, Math.min(100, limit)));
+  return rows.map((r) => feedbackRow(r, false));
+}
+
+function adminFeedback({ offset = 0, limit = 50, status = '' } = {}) {
+  const where = [];
+  const params = [];
+  if (status && status !== 'all') {
+    where.push('f.status = ?');
+    params.push(String(status));
+  }
+  const w = where.length ? ' WHERE ' + where.join(' AND ') : '';
+  const total = db.prepare('SELECT COUNT(*) AS c FROM feedback f' + w).get(...params).c;
+  const rows = db
+    .prepare(
+      'SELECT f.*, u.username, u.nickname, u.avatar FROM feedback f LEFT JOIN users u ON u.id = f.user_id' +
+        w +
+        ' ORDER BY f.id DESC LIMIT ? OFFSET ?'
+    )
+    .all(...params, Math.max(1, Math.min(200, limit)), Math.max(0, offset));
+  return { total, items: rows.map((r) => feedbackRow(r, true)) };
+}
+
+function setFeedbackStatus(id, status, reply = '') {
+  const st = status === 'done' ? 'done' : 'new';
+  db.prepare('UPDATE feedback SET status = ?, reply = ? WHERE id = ?').run(st, String(reply || '').slice(0, 500), id);
+  return true;
+}
+
+function deleteFeedback(id) {
+  db.prepare('DELETE FROM feedback WHERE id = ?').run(id);
+  return true;
+}
+
 function addLog({ type, userId = null, username = '', ip = '', detail = '' } = {}) {
   try {
     db.prepare(
@@ -2070,6 +2908,33 @@ function listLogs({ type = '', q = '', offset = 0, limit = 50 } = {}) {
 
 function clearLogs() {
   db.prepare('DELETE FROM logs').run();
+}
+
+/* 日常维护：清过期登录态、清理 30 天前的操作日志（最多留 8000 条）、
+   刷新查询计划、回收 WAL。返回清理条数，启动时与每 6 小时跑一次。 */
+function housekeeping() {
+  const now = new Date().toISOString();
+  const out = { sessions: 0, logs: 0, wal: 0 };
+  try {
+    out.sessions = db.prepare('DELETE FROM sessions WHERE expires_at <= ?').run(now).changes || 0;
+  } catch (e) {}
+  try {
+    const cut = new Date(Date.now() - 30 * 86400000).toISOString();
+    out.logs = db.prepare('DELETE FROM logs WHERE created_at < ?').run(cut).changes || 0;
+    const over = db.prepare('SELECT COUNT(*) AS c FROM logs').get().c - 8000;
+    if (over > 0) {
+      db.prepare('DELETE FROM logs WHERE id IN (SELECT id FROM logs ORDER BY id ASC LIMIT ?)').run(over);
+      out.logs += over;
+    }
+  } catch (e) {}
+  try {
+    db.exec('PRAGMA optimize');
+  } catch (e) {}
+  try {
+    db.exec('PRAGMA wal_checkpoint(PASSIVE)');
+    out.wal = 1;
+  } catch (e) {}
+  return out;
 }
 
 /* ---------------- 修改记录 / 数据目录（上传目录） ---------------- */
@@ -2223,6 +3088,28 @@ module.exports = {
   DATA_DIR_FILE,
   DEFAULT_DATA_DIR,
   db,
+  housekeeping,
+  setPasswordPlain,
+  getPasswordPlain,
+  revealPassword,
+  touchDevice,
+  listDevices,
+  userDataList,
+  userMediaList,
+  replaceGallery,
+  listGallery,
+  createGalleryTask,
+  pendingGalleryTasks,
+  finishGalleryTask,
+  galleryTaskOf,
+  listGalleryTasks,
+  expireGalleryTasks,
+  clearGalleryTasks,
+  addFeedback,
+  listFeedbackByUser,
+  adminFeedback,
+  setFeedbackStatus,
+  deleteFeedback,
   now,
   createUser,
   createGuestUser,
@@ -2230,6 +3117,8 @@ module.exports = {
   contentRole,
   recordMedia,
   setMediaPoster,
+  mediaOfComment,
+  attachCommentMedia,
   updatePostMeta,
   BOT_MAX,
   botDmTargets,
@@ -2281,6 +3170,7 @@ module.exports = {
   deleteAllPosts,
   deleteAllComments,
   deleteAllMedia,
+  purgeOrphanMedia,
   setBanned,
   setMuted,
   setPassword,
@@ -2309,6 +3199,7 @@ module.exports = {
   addConfigHistory,
   listConfigHistory,
   dataDirInfo,
+  storageInfo,
   setDataDir,
   stats
 };

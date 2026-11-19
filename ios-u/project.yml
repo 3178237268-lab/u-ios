@@ -4,25 +4,31 @@ options:
   deploymentTarget:
     iOS: "14.0"
   createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
 targets:
   U:
     type: application
     platform: iOS
     sources:
       - path: U
+        excludes:
+          - "Info.plist"
+          - "U.entitlements"
+          - "www"
       - path: U/www
         type: folder
-        buildPhase: resources
-    info:
-      path: U/Info.plist
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.trae.u
-        MARKETING_VERSION: "1.75"
-        CURRENT_PROJECT_VERSION: "76"
+        INFOPLIST_FILE: U/Info.plist
+        CODE_SIGN_ENTITLEMENTS: U/U.entitlements
+        MARKETING_VERSION: "2.23"
+        CURRENT_PROJECT_VERSION: "150"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         TARGETED_DEVICE_FAMILY: "1,2"
-        CODE_SIGN_STYLE: Manual
-        DEVELOPMENT_TEAM: ""
-        SWIFT_VERSION: "5.0"
         ENABLE_BITCODE: NO
-        ASSETCATALOG_COMPILER_APPICON_NAME: ""

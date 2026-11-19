@@ -1,31 +1,40 @@
 name: build-ipa
+
 on:
   workflow_dispatch:
   push:
-    paths: [ "ios-u/**", "index.html" ]
+    paths:
+      - "ios-u/**"
+
 jobs:
   ipa:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-      - name: 同步前端
+
+      - name: Show Xcode
+        run: xcodebuild -version
+
+      - name: Archive (unsigned)
+        working-directory: ios-u
         run: |
-          mkdir -p ios-u/U/www
-          rm -rf ios-u/U/www/*
-          cp -R android-u/assets/www/. ios-u/U/www/
-          cp -f index.html ios-u/U/www/index.html
-      - name: 安装 xcodegen
-        run: brew install xcodegen
-      - name: 构建未签名 IPA
+          set -euo pipefail
+          xcodebuild -project U.xcodeproj -scheme U -configuration Release \
+            -sdk iphoneos -archivePath build/U.xcarchive \
+            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+            archive
+
+      - name: Package ipa
+        working-directory: ios-u
         run: |
-          cd ios-u
-          xcodegen generate
-          xcodebuild -project U.xcodeproj -scheme U -configuration Release -sdk iphoneos \
-            -derivedDataPath build/dd CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+          set -euo pipefail
           mkdir -p build/Payload
-          cp -R build/dd/Build/Products/Release-iphoneos/U.app build/Payload/
-          cd build && zip -qry U-unsigned.ipa Payload
+          cp -R build/U.xcarchive/Products/Applications/U.app build/Payload/
+          cd build && zip -qr U-unsigned.ipa Payload
+          ls -lh U-unsigned.ipa
+
       - uses: actions/upload-artifact@v4
         with:
-          name: U-ipa-unsigned
+          name: U-unsigned-ipa
           path: ios-u/build/U-unsigned.ipa
+          if-no-files-found: error

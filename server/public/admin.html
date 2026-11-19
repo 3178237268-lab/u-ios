@@ -74,14 +74,50 @@ header.top{display:flex;align-items:center;gap:14px;margin-bottom:22px;flex-wrap
   box-shadow:0 14px 40px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.05);
   overflow:hidden;
 }
+/* 面板之间留出呼吸间距：以前两块贴死，交界处只剩一条暗缝，看着像裂开 */
+.panel+.panel{margin-top:14px}
 .panel-head{display:flex;align-items:center;gap:12px;padding:15px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .panel-head h2{margin:0;font-size:15px;font-weight:800}
 .panel-body{padding:16px 18px}
 
-.tabs{display:flex;gap:6px;padding:6px;background:rgba(255,255,255,.04);border-radius:14px;border:1px solid var(--line);margin-bottom:18px;width:max-content;max-width:100%;overflow:auto}
-.tab{border:0;background:transparent;color:var(--dim);padding:9px 18px;border-radius:10px;font-size:13.5px;font-weight:700;transition:background .2s,color .2s,transform .35s cubic-bezier(.22,1.35,.36,1)}
+.tabs{display:flex;flex-wrap:nowrap;gap:4px;padding:6px;background:rgba(255,255,255,.04);border-radius:14px;border:1px solid var(--line);margin-bottom:18px;width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.tabs::-webkit-scrollbar{display:none}
+/* 顶部导航条：滚动时固定在窗口最上方（磨砂玻璃 + 分隔线），下方的面板照常滚动 */
+.topbar{position:sticky;top:0;z-index:60;margin:-24px -20px 18px;padding:14px 20px 12px;background:linear-gradient(180deg,#0b0b12,#0b0b12 92%,rgba(11,11,18,.99));-webkit-backdrop-filter:blur(22px) saturate(1.25);backdrop-filter:blur(22px) saturate(1.25);border-bottom:1px solid var(--line);transition:border-color .2s,box-shadow .2s}
+.topbar.stuck{border-bottom-color:var(--line);box-shadow:0 14px 34px rgba(0,0,0,.5)}
+.topbar header.top{margin-bottom:14px}
+.topbar .tabs{margin-bottom:0}
+.topbar .logo{width:40px;height:40px;border-radius:12px;font-size:21px}
+.topbar .titles h1{font-size:18px}
+.topbar .titles p{font-size:12px}
+@media (max-width:720px){
+  .topbar{margin:-24px -20px 14px;padding:10px 14px 10px}
+  .topbar .logo{width:34px;height:34px;border-radius:10px;font-size:18px}
+  .topbar .titles h1{font-size:16px}
+  .topbar .titles p{display:none}
+  .topbar .btn{padding:7px 11px;font-size:12.5px}
+}
+.tab{flex:0 0 auto;white-space:nowrap;border:0;background:transparent;color:var(--dim);padding:9px 12px;border-radius:10px;font-size:13px;font-weight:700;letter-spacing:.2px;line-height:1.1;transition:background .2s,color .2s,transform .35s cubic-bezier(.22,1.35,.36,1)}
 .tab:active{transform:scale(.94)}
 .tab.on{background:linear-gradient(135deg,rgba(139,92,246,.9),rgba(109,74,255,.9));color:#fff;box-shadow:0 8px 22px rgba(109,74,255,.28)}
+.live-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+.live-box{position:relative;border-radius:16px;padding:16px 18px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);overflow:hidden}
+.live-box .k{display:block;font-size:12px;color:var(--dim);font-weight:700;letter-spacing:.3px;margin-bottom:8px}
+.live-box b{display:block;font-size:28px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+.live-box i{display:block;font-style:normal;margin-top:7px;font-size:11.5px;color:var(--dim)}
+.live-box.up{border-color:rgba(167,139,250,.35)}
+.live-box.up b{color:#c4b5fd}
+.live-box.down{border-color:rgba(91,140,255,.35)}
+.live-box.down b{color:#93b4ff}
+.live-box.up::after,.live-box.down::after{content:'';position:absolute;right:-30px;top:-30px;width:110px;height:110px;border-radius:50%;opacity:.16;filter:blur(6px)}
+.live-box.up::after{background:#a78bfa}
+.live-box.down::after{background:#5b8cff}
+#liveChart{display:block;width:100%;height:150px;border-radius:14px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.06)}
+.live-legend{display:flex;align-items:center;gap:16px;margin:10px 2px 14px;font-size:12px;color:var(--dim)}
+.live-legend .lg{display:inline-flex;align-items:center;gap:6px}
+.live-legend .lg::before{content:'';width:10px;height:3px;border-radius:2px;background:#a78bfa}
+.live-legend .lg.down::before{background:#5b8cff}
+.live-legend .spacer{flex:1}
 
 .kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px 22px;font-size:13px}
 .kv .row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px dashed rgba(255,255,255,.06)}
@@ -99,6 +135,22 @@ header.top{display:flex;align-items:center;gap:14px;margin-bottom:22px;flex-wrap
   background:rgba(255,255,255,.04);color:var(--text);font-size:14px;outline:0;
 }
 .field input:focus,.admin-add input:focus{border-color:rgba(139,92,246,.6)}
+/* AI 面板：服务商 / 模型下拉 */
+.field select{width:100%;padding:10px 12px;border-radius:11px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);font-size:14px;outline:0;appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),linear-gradient(135deg,var(--dim) 50%,transparent 50%);background-position:calc(100% - 17px) 52%,calc(100% - 12px) 52%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:32px}
+.field select:focus{border-color:rgba(139,92,246,.6)}
+.field select option{background:#12121b;color:var(--text)}
+/* AI token 用量卡 */
+.ai-usage{margin-top:14px;padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.03)}
+.aiu-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.aiu-head b{font-size:13.5px}
+.aiu-tip{font-size:11.5px;color:var(--dim);margin-right:auto}
+.aiu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px}
+.aiu-box{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
+.aiu-box span{display:block;font-size:11.5px;color:var(--dim);margin-bottom:6px}
+.aiu-box b{font-size:15px;font-weight:800}
+.aiu-list{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+.aiu-item{display:flex;justify-content:space-between;gap:12px;font-size:12px;color:var(--dim);padding:7px 10px;border-radius:10px;background:rgba(255,255,255,.03)}
+.aiu-item b{color:var(--text);font-weight:700}
 /* 人机频率：每 N 秒 M 条 双输入 */
 .rate-field{display:flex;flex-direction:column;gap:7px;font-size:12.5px;color:var(--dim);font-weight:700}
 .rate-field .rate-line{display:flex;align-items:center;gap:6px;color:var(--dim);font-size:12px;font-weight:700}
@@ -108,7 +160,10 @@ header.top{display:flex;align-items:center;gap:14px;margin-bottom:22px;flex-wrap
 .switch-row:last-child{border-bottom:0}
 .switch-row b{display:block;font-size:13.5px}
 .switch-row small{display:block;color:var(--dim);font-size:12px;margin-top:4px;line-height:1.5}
-.switch-row input{width:44px;height:25px;flex:0 0 auto;accent-color:#8b5cf6;cursor:pointer}
+.switch-row input{appearance:none;-webkit-appearance:none;width:46px;height:26px;flex:0 0 auto;margin:0;border-radius:13px;background:#2a2a3a;position:relative;cursor:pointer;transition:background .18s;outline:none}
+.switch-row input::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .18s;box-shadow:0 1px 3px rgba(0,0,0,.35)}
+.switch-row input:checked{background:#8b5cf6}
+.switch-row input:checked::after{transform:translateX(20px)}
 .checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px}
 .checks label{display:flex;align-items:center;gap:9px;padding:11px 13px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.03);font-size:13px;font-weight:700;cursor:pointer}
 .checks input{width:17px;height:17px;accent-color:#8b5cf6}
@@ -255,6 +310,179 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
 .modal-card h3{margin:0 0 8px;font-size:16px}
 .modal-card p{margin:0 0 20px;font-size:13.5px;color:var(--dim);line-height:1.6}
 .modal-card .actions{justify-content:flex-end}
+  /* 媒体在线预览（视频 / 图片） */
+  .mpreview{position:fixed;inset:0;z-index:9000;display:none;place-items:center;background:rgba(6,6,12,.88);backdrop-filter:blur(6px)}
+  .mpreview.show{display:grid}
+  .mpreview-box{width:min(960px,92vw);max-height:88vh;background:#14141f;border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+  .mpreview-head{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line);color:#e8e8f2;font-size:13px}
+  .mpreview-head span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mpreview-body{flex:1;min-height:0;display:grid;place-items:center;background:#000;padding:0}
+  .mpreview-body video,.mpreview-body img{max-width:100%;max-height:78vh;display:block}
+  .mpreview-body .muted{padding:40px}
+  /* 媒体列表封面缩略图 */
+  .mthumb{width:66px;height:42px;border-radius:7px;overflow:hidden;position:relative;background:#1b1b26;border:1px solid var(--line);display:grid;place-items:center;cursor:pointer;flex:none}
+  .mthumb img,.mthumb video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+  .mthumb.is-video::after{content:'';position:absolute;left:6px;bottom:5px;border-style:solid;border-width:5px 0 5px 9px;border-color:transparent transparent transparent rgba(255,255,255,.88)}
+  .mthumb:hover{border-color:#7c8cff}
+  .mthumb.empty{color:#6e6e85;font-size:11px}
+  /* 各端默认服务器地址 */
+  .net-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px 14px}
+  .net-grid label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted)}
+  .net-grid input{height:34px;padding:0 10px;border-radius:9px;border:1px solid var(--line);background:#101018;color:#e8e8f2;font-size:12.5px}
+  .port-chip{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.04);font-size:12px;color:#d8d8e6}
+  .port-chip em{font-style:normal;font-size:11px;color:#8f8fa6}
+  .port-chip.ok{border-color:rgba(78,201,176,.55)}
+  .port-chip.bad{border-color:rgba(255,92,108,.5)}
+  /* ---- 历史版本上传 ---- */
+  .ver-up{display:flex;flex-wrap:wrap;gap:10px 12px;align-items:flex-end}
+  .ud-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+.ud-cell{position:relative;border-radius:12px;overflow:hidden;background:#15151f;aspect-ratio:1;display:flex;align-items:center;justify-content:center}
+.ud-cell img,.ud-cell video{width:100%;height:100%;object-fit:cover;display:block}
+.ud-cell span{position:absolute;left:6px;bottom:6px;font-size:11px;color:#cfcfe4;background:rgba(0,0,0,.5);padding:1px 6px;border-radius:999px}
+.ud-gal{display:flex;flex-direction:column;gap:6px;max-height:360px;overflow:auto}
+.ud-grow{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:#15151f;font-size:12.5px}
+.ud-grow .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ud-gprev{width:64px;height:64px;border-radius:8px;object-fit:cover;background:#0e0e16;cursor:zoom-in}
+  .ud-big{position:fixed;inset:0;background:rgba(0,0,0,.84);display:none;align-items:center;justify-content:center;z-index:9999;padding:24px;cursor:zoom-out}
+  .ud-big.show{display:flex}
+  .ud-big img{max-width:92vw;max-height:92vh;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.55)}
+.ud-tag{font-size:11px;padding:2px 8px;border-radius:999px;background:rgba(139,92,246,.2);color:#c9b6ff}
+.ud-ops{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:16px 0 0}
+.ud-state{flex:1 1 100%;font-size:12.5px;color:#9696ac;line-height:1.6;min-height:18px;word-break:break-all}
+.addr-list{display:flex;flex-direction:column}
+.addr-item{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.addr-item:last-child{border-bottom:0}
+.addr-k{color:var(--dim);flex:0 0 auto;line-height:1.5;max-width:48%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.addr-v{color:#18c090;text-align:right;word-break:break-all;line-height:1.5;min-width:0;flex:1 1 auto}
+.addr-v.plain{color:var(--text)}
+.ud-state.ok{color:#4ddba8}
+.ud-state.bad{color:#ff7b8a}
+.ud-state.run{color:#c9b8ff}
+.panel-save{display:flex;justify-content:flex-end;margin-top:12px}
+  .ver-field{display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:var(--dim,#9696ac)}
+  .ver-field input{min-width:190px;height:34px;padding:0 10px;border-radius:9px;border:1px solid var(--line,#2b2b38);background:var(--surface2,#17171f);color:var(--text,#e9e9f2);font-size:13px;outline:none}
+  .ver-field input:focus{border-color:var(--blue,#4f7cff)}
+  .ver-field.ver-file input{height:auto;padding:5px 8px;font-size:12px}
+  .ver-prog{display:none;height:6px;border-radius:99px;background:var(--surface2,#17171f);overflow:hidden;margin-top:12px}
+  .ver-prog.show{display:block}
+  .ver-prog i{display:block;height:100%;width:0;background:var(--blue,#4f7cff);transition:width .2s ease}
+  .ai-sub{margin:16px 0 8px;font-size:13px;color:var(--muted,#8b8b9a);font-weight:600}
+  .ai-switches{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 18px}
+  @media(max-width:1100px){.ai-switches{grid-template-columns:1fr}}
+  .ai-iq-row{display:flex;align-items:center;gap:12px}
+  .ai-iq-row input[type=range]{flex:1;accent-color:#7c5cff}
+  .ai-iq-row b{min-width:34px;text-align:right}
+  .aibot-add{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  .aibot-add input{flex:1;min-width:180px}
+  .aibot-iq{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted,#8b8b9a)}
+  .aibot-iq input{width:76px}
+  .aibot-iq input{width:74px}
+  .aibot-list{display:flex;flex-direction:column;gap:10px}
+  .aibot-row{display:flex;gap:12px;align-items:center;padding:10px 12px;border:1px solid var(--line,#26263a);border-radius:14px;background:var(--surface2,#15151f)}
+  .aibot-av{width:44px;height:44px;border-radius:14px;overflow:hidden;flex:none;display:flex;align-items:center;justify-content:center;background:#2a2a3d;font-weight:700}
+  .aibot-av img{width:100%;height:100%;object-fit:cover}
+  .aibot-main{flex:1;min-width:0}
+  .aibot-main b{font-size:14px}
+  .aibot-main .muted{font-size:12px}
+  .aibot-act{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+/* ===== 视觉刷新（第145轮）：字更端正 · 图标统一 · 更圆润 · 果冻回弹（只动 transform/opacity，不卡） ===== */
+:root{
+  --font-ui:system-ui,-apple-system,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",sans-serif;
+  --ease-jelly:cubic-bezier(.34,1.56,.64,1);
+  --ease-out:cubic-bezier(.22,1,.36,1);
+}
+body{
+  font-family:var(--font-ui);
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+  text-rendering:optimizeLegibility;font-feature-settings:"tnum" 1;
+  letter-spacing:.012em;line-height:1.55;
+}
+.titles h1,.panel-head h2,.modal-card h3,.login-card h2{letter-spacing:-.005em;font-weight:700}
+th{font-weight:700;letter-spacing:.06em}
+td,th,.stat .v,.kv .row span:last-child,.live-box b{font-variant-numeric:tabular-nums}
+.btn{border-radius:999px;font-weight:600;letter-spacing:.02em;padding:9px 16px;white-space:nowrap;transition:transform .42s var(--ease-jelly),background .2s var(--ease-out),border-color .2s,box-shadow .25s,color .2s}
+.btn:active{transform:scale(.945,.9)}
+.btn:hover{border-color:rgba(139,92,246,.5);box-shadow:0 6px 18px rgba(0,0,0,.26)}
+.btn.primary:hover{box-shadow:0 12px 30px rgba(109,74,255,.45)}
+.btn.sm{padding:6px 12px;border-radius:999px;font-size:12px}
+.btn.ico{width:30px;height:30px;padding:0;display:inline-grid;place-items:center;border-radius:999px;line-height:0}
+.btn.ico svg{width:14px;height:14px;display:block}
+.btn svg{flex:0 0 auto}
+.tabs{border-radius:18px;padding:5px;gap:3px}
+.tab{border-radius:14px;padding:9px 12px;font-weight:600;letter-spacing:.005em;transition:background .2s var(--ease-out),color .2s,transform .42s var(--ease-jelly),box-shadow .25s}
+.tab:hover{background:rgba(255,255,255,.06);color:#cfd0e2}
+.tab.on{animation:tabPop .46s var(--ease-jelly)}
+.tab.on:hover{background:linear-gradient(135deg,rgba(139,92,246,.95),rgba(109,74,255,.95))}
+@keyframes tabPop{0%{transform:scale(.9)}55%{transform:scale(1.055,1.02)}78%{transform:scale(.988)}100%{transform:scale(1)}}
+.panel{border-radius:22px}
+.stat{border-radius:20px;transition:transform .42s var(--ease-jelly),box-shadow .3s,border-color .25s}
+.stat:hover{transform:translateY(-2px);border-color:rgba(139,92,246,.35)}
+.live-box{border-radius:18px}
+.ai-usage,.aiu-box,.aiu-item,.aibot-row,.ud-grow,.ud-cell,.mpreview-box{border-radius:14px}
+.av{border-radius:13px}
+.mthumb{border-radius:10px}
+.modal-card,.login-card{border-radius:24px}
+.ud-tag,.tag,.role-chip,.port-chip{border-radius:999px}
+.field input,.admin-add input,.field select,.rate-field .rate-line input,.view-input,.net-grid input,.ver-field input{border-radius:12px;transition:border-color .2s,box-shadow .2s,background .2s}
+.field input:focus,.admin-add input:focus,.rate-field .rate-line input:focus,.view-input:focus,.net-grid input:focus,.ver-field input:focus{box-shadow:0 0 0 3px rgba(139,92,246,.16)}
+.search{border-radius:999px;transition:border-color .2s,box-shadow .2s}
+.search:focus-within{border-color:rgba(139,92,246,.55);box-shadow:0 0 0 3px rgba(139,92,246,.14)}
+.search svg{stroke:currentColor;stroke-width:2;opacity:.85;flex:0 0 auto}
+input[type=file]::file-selector-button{font:inherit;font-weight:600;margin-right:10px;padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--text);cursor:pointer;transition:background .2s var(--ease-out),transform .42s var(--ease-jelly),border-color .2s}
+input[type=file]::file-selector-button:hover{background:rgba(139,92,246,.26);border-color:rgba(139,92,246,.55)}
+input[type=file]::file-selector-button:active{transform:scale(.94)}
+.ver-field.ver-file input{border-radius:12px}
+
+/* ===== 第146轮：中间分开——标签与值之间加虚线引导，标签永不竖排，长地址自动换行 ===== */
+.kv{grid-template-columns:repeat(auto-fill,minmax(272px,1fr));gap:12px 26px}
+.kv .row{display:flex;align-items:baseline;gap:0;padding:8px 0}
+.kv .row span:first-child{display:flex;align-items:baseline;flex:0 1 auto;min-width:0;white-space:nowrap;color:var(--dim)}
+.kv .row span:first-child::after{content:'';flex:1 1 16px;min-width:8px;margin:0 8px;transform:translateY(-3px);border-bottom:1px dashed rgba(255,255,255,.24)}
+.kv .row span:last-child{flex:1 1 auto;min-width:0;text-align:right;overflow-wrap:anywhere;word-break:break-word;line-height:1.45}
+.addr-item{gap:0;align-items:baseline}
+.addr-k{flex:0 0 auto;max-width:48%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.addr-k::after{display:none!important}
+.addr-item .lead{flex:1 1 18px;min-width:8px;margin:0 8px;transform:translateY(-3px);border-bottom:1px dashed rgba(255,255,255,.28)}
+.addr-v{flex:1 1 auto;min-width:0;overflow-wrap:anywhere;word-break:break-word}
+.aiu-item{gap:0}
+.aiu-item>span:first-child{white-space:nowrap;flex:0 1 auto;min-width:0;display:flex;align-items:baseline}
+.aiu-item>span:first-child::after{content:'';flex:1 1 14px;min-width:6px;margin:0 8px;transform:translateY(-3px);border-bottom:1px dashed rgba(255,255,255,.22)}
+.aiu-item b{flex:0 0 auto;text-align:right;white-space:nowrap}
+.endpoint span.desc{white-space:normal;overflow-wrap:anywhere}
+td{overflow-wrap:break-word}
+.actions .btn,.actions a{white-space:nowrap}
+table .btn{white-space:nowrap}
+
+/* ===== 第147轮：其他菜单也「中间分开」——所有键值行加虚线引导，服务器信息三列均分 ===== */
+/* 为什么不用 .k::after 撑开：.k 是 flex item，它的 auto 宽度会被伪元素撑满，标签和值就贴到一起。
+   改成在 .k 后面插一个独立的 <span class="lead"> 弹性占位，.v 保持 flex:1 1 auto 贴右。 */
+#serverKv{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 26px}
+.kv .row .k{flex:0 0 auto;max-width:46%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--dim)}
+.kv .row .k::after{display:none!important}
+.kv .row .lead{flex:1 1 18px;min-width:8px;margin:0 8px;transform:translateY(-3px);border-bottom:1px dashed rgba(255,255,255,.28)}
+.kv .row .v{flex:1 1 auto;min-width:0;text-align:right;font-weight:700;overflow-wrap:anywhere;word-break:break-word;line-height:1.45}
+/* 没有 .lead 的行（历史遗留下的 .k 后直接接 .v）：用 gap 兜底，至少不贴在一起 */
+.kv .row:has(.k):not(:has(.lead)){gap:18px}
+@media (max-width:1000px){#serverKv{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){#serverKv{grid-template-columns:1fr}}
+.ud-grow .n{min-width:0}
+.ud-state,.data-hint,.clip{overflow-wrap:anywhere}
+@media (max-width:520px){
+  .kv{grid-template-columns:1fr}
+  .kv .row span:first-child::after,.addr-k::after{min-width:6px;margin:0 8px}
+}
+.switch-row input{transition:background .25s var(--ease-out),box-shadow .25s}
+.switch-row input::after{transition:transform .42s var(--ease-jelly),width .24s var(--ease-out)}
+.switch-row input:active::after{width:26px}
+.switch-row input:checked:active::after{transform:translateX(14px);width:26px}
+.switch-row input:checked{box-shadow:0 0 0 3px rgba(139,92,246,.16)}
+.view-in{animation:cardIn .34s var(--ease-jelly) both}
+@keyframes cardIn{0%{opacity:0;transform:translateY(6px) scale(.995)}60%{opacity:1}100%{opacity:1;transform:none}}
+.toast{transition:opacity .25s,transform .42s var(--ease-jelly)}
+tbody tr{transition:background .18s var(--ease-out)}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+}
 </style>
 </head>
 <body>
@@ -272,6 +500,7 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
 </div>
 
 <div class="wrap">
+  <div class="topbar" id="topbar">
   <header class="top">
     <div class="logo">U</div>
     <div class="titles">
@@ -286,14 +515,21 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
 
   <div class="tabs">
     <button class="tab on" data-tab="overview">概览</button>
+    <button class="tab" data-tab="live">实时传输</button>
     <button class="tab" data-tab="settings">站点设置</button>
     <button class="tab" data-tab="users">用户</button>
     <button class="tab" data-tab="posts">帖子</button>
     <button class="tab" data-tab="comments">评论</button>
     <button class="tab" data-tab="media">媒体</button>
+    <button class="tab" data-tab="aibots">AI 人机</button>
+    <button class="tab" data-tab="userdata">用户数据</button>
+    <button class="tab" data-tab="feedback">反馈</button>
+    <button class="tab" data-tab="versions">历史版本</button>
     <button class="tab" data-tab="logs">日志</button>
+    <button class="tab" data-tab="net">网络 / 穿透</button>
     <button class="tab" data-tab="history">修改记录</button>
     <button class="tab" data-tab="api">接口</button>
+  </div>
   </div>
 
   <section id="view-overview">
@@ -308,8 +544,17 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
     </div>
     <div class="panel">
       <div class="panel-head">
+        <h2>打开地址</h2>
+        <div class="spacer"></div>
+        <span class="muted" style="font-size:12px">忘了地址就来看这里 · 每次启动服务器也会写进 addresses.txt</span>
+      </div>
+      <div class="panel-body"><div class="kv" id="addrKv"></div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
         <h2>数据管理</h2>
         <div class="spacer"></div>
+        <button class="btn sm" id="trafficResetBtn">重置流量</button>
         <button class="btn sm" id="backupNowBtn">立即备份</button>
       </div>
       <div class="panel-body">
@@ -334,6 +579,39 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
             </table>
           </div>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-live" style="display:none">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>实时传输</h2>
+        <div class="spacer"></div>
+        <button class="btn sm" id="livePauseBtn">暂停</button>
+      </div>
+      <div class="panel-body">
+        <div class="live-grid">
+          <div class="live-box up">
+            <span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-1px"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg> 上行 · 上传</span>
+            <b id="liveUp">0 B/s</b>
+            <i id="liveUpMeta">0 次/秒</i>
+          </div>
+          <div class="live-box down">
+            <span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-1px"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg> 下行 · 下载</span>
+            <b id="liveDown">0 B/s</b>
+            <i id="liveDownMeta">0 次/秒</i>
+          </div>
+        </div>
+        <canvas id="liveChart"></canvas>
+        <div class="live-legend">
+          <span class="lg">上传</span>
+          <span class="lg down">下载</span>
+          <span class="spacer"></span>
+          <span class="muted" id="livePeak">峰值 0 B/s</span>
+        </div>
+        <div class="kv" id="liveKv"></div>
+        <p class="data-hint">每秒采样，曲线显示最近 60 秒。只统计媒体传输（`POST /api/media` 上传、`/media/:id` 下载，含拖动进度条产生的分段请求），不含管理页面本身。</p>
       </div>
     </div>
   </section>
@@ -372,6 +650,7 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
           <label class="field"><span>备份保留份数</span><input id="setBackupKeep" type="number" min="1" max="20" step="1" placeholder="1-20"></label>
         </div>
         <p class="data-hint">超出上限的上传会被服务器直接拒绝；App 内选择文件时也会按这里的数值提前提示。</p>
+        <div class="panel-save"><button class="btn primary sm" data-save="settings">保存上传设置</button></div>
       </div>
     </div>
     <div class="panel">
@@ -380,28 +659,35 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
         <div class="settings-grid">
           <label class="rate-field"><span>人机发帖</span><span class="rate-line">每 <input id="setBotPostEvery" type="number" min="1" max="3600" step="1" value="20"> 秒 <input id="setBotPostRound" type="number" min="0" max="1000" step="1" value="0"> 条</span></label>
           <label class="rate-field"><span>人机评论</span><span class="rate-line">每 <input id="setBotCommentEvery" type="number" min="1" max="3600" step="1" value="20"> 秒 <input id="setBotCommentRound" type="number" min="0" max="1000" step="1" value="0"> 条</span></label>
+          <label class="rate-field"><span>人机回复</span><span class="rate-line">每 <input id="setBotReplyEvery" type="number" min="1" max="3600" step="1" value="20"> 秒 <input id="setBotReplyRound" type="number" min="0" max="1000" step="1" value="0"> 条</span></label>
           <label class="rate-field"><span>人机点赞</span><span class="rate-line">每 <input id="setBotLikeEvery" type="number" min="1" max="3600" step="1" value="20"> 秒 <input id="setBotLikeRound" type="number" min="0" max="1000" step="1" value="0"> 条</span></label>
+          <label class="rate-field"><span>人机转帖</span><span class="rate-line">每 <input id="setBotRepostEvery" type="number" min="1" max="3600" step="1" value="20"> 秒 <input id="setBotRepostRound" type="number" min="0" max="1000" step="1" value="0"> 条</span></label>
+          <label class="rate-field"><span>人机关注</span><span class="rate-line">每 <input id="setBotFollowEvery" type="number" min="1" max="3600" step="1" value="20"> 秒 <input id="setBotFollowRound" type="number" min="0" max="1000" step="1" value="0"> 条</span></label>
           <label class="rate-field"><span>人机私信</span><span class="rate-line">每 <input id="setBotDmEvery" type="number" min="1" max="3600" step="1" value="20"> 秒 <input id="setBotDmRound" type="number" min="0" max="1000" step="1" value="0"> 条</span></label>
         </div>
-        <p class="data-hint">四类动作各自按「每 N 秒发 M 条」运行：N 填 1-3600 秒，M 填 0-1000 条，M 为 0 表示关掉这一类。服务器同时把设置换算成每秒速率下发，老版本 App 照旧工作。人机私信会随机发给最近活跃的真实用户，没有可发对象时自动跳过这一轮。</p>
+        <p class="data-hint">七类动作各自按「每 N 秒做 M 条」运行：N 填 1-3600 秒，M 填 0-1000 条，M 为 0 表示关掉这一类。实际间隔会在 ±35% 内随机抖动，看起来不像定时脚本。人机私信会随机发给最近活跃的真实用户，人机关注优先挑真人账号，没有合适对象时自动跳过这一轮。</p>
+        <div class="panel-save"><button class="btn primary sm" data-save="settings">保存人机频率</button></div>
       </div>
     </div>
     <div class="panel">
       <div class="panel-head"><h2>全站开关</h2></div>
       <div class="panel-body">
         <label class="switch-row">
-          <span><b>允许发帖</b><small>关闭后所有账号（含管理员）都不能发帖和转发</small></span>
+          <span><b>允许发帖</b><small>关闭后普通用户、人机、AI 人机都不能发帖和转发；管理员不受影响，仍可正常发布</small></span>
           <input id="setAllowPost" type="checkbox">
         </label>
         <label class="switch-row">
-          <span><b>允许评论</b><small>关闭后所有账号都不能发表评论</small></span>
+          <span><b>允许评论</b><small>关闭后普通用户、人机、AI 人机的评论和回复都停；管理员不受影响</small></span>
           <input id="setAllowComment" type="checkbox">
         </label>
+        <div class="panel-save"><button class="btn primary sm" data-save="settings">保存全站开关</button></div>
       </div>
     </div>
     <div class="panel">
       <div class="panel-head"><h2>服务菜单</h2><div class="spacer"></div><span class="muted" style="font-size:12px">取消勾选即在 App 内关闭入口</span></div>
-      <div class="panel-body"><div class="checks" id="serviceChecks"></div></div>
+      <div class="panel-body"><div class="checks" id="serviceChecks"></div>
+        <div class="panel-save"><button class="btn primary sm" data-save="settings">保存服务菜单</button></div>
+      </div>
     </div>
     <div class="panel">
       <div class="panel-head">
@@ -442,6 +728,7 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
         <button class="rf-btn active" data-role="">全部</button>
         <button class="rf-btn" data-role="user">用户</button>
         <button class="rf-btn" data-role="bot">人机</button>
+        <button class="rf-btn" data-role="ai">AI 人机</button>
         <button class="rf-btn" data-role="guest">游客</button>
         <button class="rf-btn" data-role="admin">管理员</button>
         <span class="rf-count" id="userCount"></span>
@@ -474,6 +761,7 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
         <button class="rf-btn" data-role="user">用户</button>
         <button class="rf-btn" data-role="guest">游客</button>
         <button class="rf-btn" data-role="bot">人机</button>
+        <button class="rf-btn" data-role="ai">AI 人机</button>
         <button class="rf-btn" data-role="admin">管理员</button>
         <span class="rf-count" id="postCount"></span>
       </div>
@@ -505,6 +793,7 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
         <button class="rf-btn" data-role="user">用户</button>
         <button class="rf-btn" data-role="guest">游客</button>
         <button class="rf-btn" data-role="bot">人机</button>
+        <button class="rf-btn" data-role="ai">AI 人机</button>
         <button class="rf-btn" data-role="admin">管理员</button>
         <span class="rf-count" id="commentCount"></span>
       </div>
@@ -523,6 +812,7 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
         <h2>媒体文件（图片 / 视频）</h2>
         <button class="btn sm" id="mediaSelectAll">全选</button>
         <button class="btn sm danger" id="mediaBulkDel">批量删除</button>
+        <button class="btn sm" id="mediaPurgeOrphans" title="删掉上传了但没发成帖子的文件">清理未关联</button>
         <button class="btn sm danger" id="mediaClearAll">一键清空</button>
         <div class="spacer"></div>
         <div class="search">
@@ -536,18 +826,255 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
         <button class="rf-btn" data-role="user">用户</button>
         <button class="rf-btn" data-role="guest">游客</button>
         <button class="rf-btn" data-role="bot">人机</button>
+        <button class="rf-btn" data-role="ai">AI 人机</button>
         <button class="rf-btn" data-role="admin">管理员</button>
         <span class="rf-count" id="mediaCount"></span>
       </div>
+      <div class="role-filter" id="mediaTypeFilter">
+        <span class="rf-label">类型</span>
+        <button class="rf-btn active" data-mtype="">全部</button>
+        <button class="rf-btn" data-mtype="video">视频</button>
+        <button class="rf-btn" data-mtype="image">图片</button>
+        <span class="rf-count" id="mediaTypeCount"></span>
+      </div>
       <div class="tbl-wrap">
         <table>
-          <thead><tr><th style="width:34px"><input type="checkbox" id="mediaCheckAll"></th><th>文件</th><th>类型</th><th>大小</th><th>所属帖子</th><th>上传者</th><th>时间</th><th style="text-align:right">操作</th></tr></thead>
+          <thead><tr><th style="width:34px"><input type="checkbox" id="mediaCheckAll"></th><th style="width:78px">封面</th><th>文件</th><th>类型</th><th>大小</th><th>所属帖子</th><th>上传者</th><th>时间</th><th style="text-align:right">操作</th></tr></thead>
           <tbody id="mediaRows"></tbody>
         </table>
       </div>
     </div>
   </section>
 
+  <section id="view-aibots" style="display:none">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>AI 能力与模型</h2>
+        <div class="spacer"></div>
+        <span class="muted" style="font-size:12px">OpenAI 兼容接口；接口不通时自动回落本地语料</span>
+      </div>
+      <div class="panel-body">
+        <label class="switch-row">
+          <span><b>启用 AI 生成</b><small>关掉就彻底停：AI 人机不再自动轮转、也不再自动回话（下面「保存 AI 设置」旁边的手工「试发一条」不受影响）。开着则发帖 / 评论 / 回复 / 私信都交给 AI 来写，接口失败自动回落本地语料</small></span>
+          <input id="setAiEnabled" type="checkbox">
+        </label>
+        <div class="settings-grid">
+          <label class="field"><span>服务商</span><select id="setAiProvider"></select></label>
+          <label class="field"><span>模型（选服务商后自动列出）</span><select id="setAiModel"></select></label>
+          <label class="field"><span>API Key（sk- 开头，只存服务器）</span><input id="setAiKey" type="password" placeholder="sk-..." autocomplete="new-password"></label>
+          <label class="field"><span>温度（0-200，按 100 折算成 0-2）</span><input id="setAiTemp" type="number" min="0" max="200" step="5" placeholder="90"></label>
+          <label class="field"><span>输入单价（元 / 百万 tokens）</span><input id="setAiPriceIn" type="number" min="0" step="0.1" placeholder="2"></label>
+          <label class="field"><span>输出单价（元 / 百万 tokens）</span><input id="setAiPriceOut" type="number" min="0" step="0.1" placeholder="8"></label>
+          <label class="field" id="aiCustomWrap" style="display:none"><span>自定义模型名（ID）</span><input id="setAiModelCustom" placeholder="例如 deepseek-chat" autocomplete="off"></label>
+          <label class="field" style="grid-column:1/-1"><span>接口地址（Base URL，选服务商自动填好，可手改）</span><input id="setAiBase" placeholder="https://api.deepseek.com/v1" autocomplete="off"></label>
+          <label class="field" style="grid-column:1/-1"><span>额外风格提示（可留空）</span><input id="setAiHint" placeholder="例如：像普通人随手发动态，多用短句，不要客套" autocomplete="off"></label>
+        </div>
+
+        <h3 class="ai-sub">AI 的能力开关</h3>
+        <div class="ai-switches">
+          <label class="switch-row"><span><b>自动生成头像</b><small>新账号自动配一张头像：一半从网上找（猫狗 / 花 / 风景 / 天空 / 美食这些中国人常用的），一半本地生成；随时可以点「换头像」重抽</small></span><input id="setAiAutoAvatar" type="checkbox"></label>
+          <label class="switch-row"><span><b>看图 / 看视频</b><small>评论前真的先看图 / 看视频封面，留言里会带画面细节（需要支持图片的模型，见下面「看图的模型名」）</small></span><input id="setAiVision" type="checkbox"></label>
+          <label class="switch-row"><span><b>优先评论 U 官方</b><small>评论时先在官方 / 管理员帖里挑，挑不到才评论普通用户</small></span><input id="setAiCommentOfficial" type="checkbox"></label>
+          <label class="switch-row"><span><b>自己画图发帖</b><small>让 AI 先想画面再生成图片，配一句话发出来</small></span><input id="setAiImageGen" type="checkbox"></label>
+          <label class="switch-row"><span><b>自己拍视频</b><small>连续生成几张图，用服务器 ffmpeg 合成 6 秒竖屏视频发出来</small></span><input id="setAiVideoGen" type="checkbox"></label>
+          <label class="switch-row"><span><b>自己在网上找图</b><small>按帖子关键词去图片池 / Pexels 找一张图发出来</small></span><input id="setAiWebMedia" type="checkbox"></label>
+        </div>
+
+        <h3 class="ai-sub">发帖配比（纯文字 / 图片 / 视频）</h3>
+        <div class="settings-grid">
+          <label class="field"><span>纯文字帖</span><input id="setAiPostText" type="number" min="0" max="100" step="5" placeholder="50"></label>
+          <label class="field"><span>图片帖</span><input id="setAiPostImage" type="number" min="0" max="100" step="5" placeholder="30"></label>
+          <label class="field"><span>视频帖</span><input id="setAiPostVideo" type="number" min="0" max="100" step="5" placeholder="20"></label>
+        </div>
+        <p class="data-hint" id="aiMixPreview" style="margin:8px 0 0">三个数字是权重，填多少都行，服务器按比例折算成百分比。</p>
+
+        <h3 class="ai-sub">谁会触发 AI 回话</h3>
+        <div class="ai-switches">
+          <label class="switch-row"><span><b>真人说话就回</b><small>真人在 AI 人机的帖子下评论、或回复 AI 的评论时，AI 会把整段对话（帖子 + 全部评论，包括自己说过的）读完，再用同一个人的口气接一句</small></span><input id="setAiReplyHuman" type="checkbox"></label>
+          <label class="switch-row"><span><b>回真人不限间隔</b><small>打开：真人一说话就回，不受人机之间「隔几秒才能动一次」的限制；关闭：按正常节奏等 3~8 秒再回</small></span><input id="setAiReplyFast" type="checkbox"></label>
+          <label class="switch-row"><span><b>游客说话也回</b><small>免注册进来的游客（昵称「游客 xxxxxx」）评论时，AI 同样读完对话再接一句</small></span><input id="setAiReplyGuest" type="checkbox"></label>
+          <label class="switch-row"><span><b>别的 AI 人机说话也回</b><small>AI 人机之间也能搭话：按下面的概率决定回不回，一条对话链里最多说几句就停，避免两个 AI 自己刷屏</small></span><input id="setAiReplyAi" type="checkbox"></label>
+        </div>
+        <div class="settings-grid" style="margin-top:10px">
+          <label class="field"><span>同一条帖子最多回几条（0 = 不限，30 分钟内）</span><input id="setAiReplyPerPost" type="number" min="0" max="20" step="1" placeholder="3"></label>
+          <label class="field"><span>AI 回 AI 的概率（%）</span><input id="setAiReplyAiChance" type="number" min="0" max="100" step="5" placeholder="30"></label>
+          <label class="field"><span>一条对话链里 AI 最多说几句</span><input id="setAiReplyAiMax" type="number" min="0" max="10" step="1" placeholder="3"></label>
+        </div>
+
+        <h3 class="ai-sub">看图模型（留空则沿用主模型）</h3>
+        <div class="settings-grid">
+          <label class="field"><span>视觉模型名</span><input id="setAiVisionModel" placeholder="例如 qwen-vl-max / gpt-4o-mini" autocomplete="off"></label>
+          <label class="field"><span>视觉接口地址</span><input id="setAiVisionBase" placeholder="留空用主接口地址" autocomplete="off"></label>
+          <label class="field" style="grid-column:1/-1"><span>视觉 API Key</span><input id="setAiVisionKey" type="password" placeholder="留空用主 Key" autocomplete="new-password"></label>
+        </div>
+
+        <h3 class="ai-sub">画图 / 找图</h3>
+        <div class="settings-grid">
+          <label class="field"><span>绘图服务</span>
+            <select id="setAiImageProvider">
+              <option value="pollinations">Pollinations（免费，不用 Key）</option>
+              <option value="openai">OpenAI 兼容 /images/generations</option>
+            </select>
+          </label>
+          <label class="field"><span>图片尺寸</span>
+            <select id="setAiImageSize">
+              <option value="1024x1024">1024 x 1024</option>
+              <option value="1024x1536">1024 x 1536（竖）</option>
+              <option value="1536x1024">1536 x 1024（横）</option>
+              <option value="720x1280">720 x 1280（手机竖屏）</option>
+            </select>
+          </label>
+          <label class="field"><span>绘图模型名</span><input id="setAiImageModel" placeholder="例如 gpt-image-1" autocomplete="off"></label>
+          <label class="field"><span>绘图接口地址</span><input id="setAiImageBase" placeholder="留空用 Pollinations" autocomplete="off"></label>
+          <label class="field"><span>绘图 API Key</span><input id="setAiImageKey" type="password" placeholder="选 OpenAI 兼容时才需要" autocomplete="new-password"></label>
+          <label class="field"><span>Pexels Key（可选，不填也能找）</span><input id="setAiWebMediaKey" type="password" placeholder="不填就让 AI 自己到免费图库找" autocomplete="new-password"></label>
+        </div>
+        <p class="data-hint" style="margin:8px 0 0">网上找图不用配置：AI 看完正文自己定 2~4 个英文关键词，先去免费图库（loremflickr / picsum）取图，再退回随机风景图；填了 Pexels Key 就优先用 Pexels 搜。</p>
+
+        <h3 class="ai-sub">自动发内容（可以关掉）</h3>
+        <p class="data-hint" style="margin:0 0 8px">打开以后，服务器会自己按下面的节奏让 AI 人机动起来：每次在「发帖 / 评论 / 点赞 / 关注」里随机挑一种做，实际间隔还会上下浮动约 30%，看起来不像机器人。想彻底关掉，把下面两个数字都填 0。</p>
+        <div class="settings-grid">
+          <label class="field"><span>隔多少秒做一次（0 = 关闭）</span><input id="setAiAutoEvery" type="number" min="0" max="3600" step="1" placeholder="例如 120，就是两分钟一次"></label>
+          <label class="field"><span>每次做几件事（1~20）</span><input id="setAiAutoPer" type="number" min="0" max="20" step="1" placeholder="例如 3，就是一次做三件"></label>
+        </div>
+        <p class="data-hint" id="aiAutoPreview" style="margin:8px 0 0">现在是关闭状态，AI 人机不会自动发任何内容；下面按钮点一次才动一次。</p>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="btn sm primary" id="aiTestBtn">测试连接</button>
+          <button class="btn sm" data-aiglobalrun="post">试发一条</button>
+          <button class="btn sm" data-aiglobalrun="commentOfficial">试评官方</button>
+          <button class="btn sm" data-aiglobalrun="reply">试回一条</button>
+          <button class="btn sm" data-aiglobalrun="image">试画一张</button>
+          <button class="btn sm" data-aiglobalrun="follow">试关注</button>
+        </div>
+        <div class="ai-usage">
+          <div class="aiu-head"><b>token 消耗</b><span class="aiu-tip">每次调用 AI 自动记账，按填的单价折算</span><button class="btn sm" type="button" id="aiUsageRefresh" data-aiu="refresh">刷新</button><button class="btn sm danger" type="button" id="aiUsageReset" data-aiu="reset">清零</button></div>
+          <div class="aiu-grid">
+            <div class="aiu-box"><span>今日</span><b id="aiuToday">—</b></div>
+            <div class="aiu-box"><span>累计</span><b id="aiuTotal">—</b></div>
+            <div class="aiu-box"><span>今日花费</span><b id="aiuTodayCost">—</b></div>
+            <div class="aiu-box"><span>累计花费</span><b id="aiuTotalCost">—</b></div>
+          </div>
+          <div class="aiu-list" id="aiuList"></div>
+        </div>
+        <p class="data-hint" id="aiTestOut">先选服务商（DeepSeek / OpenAI / Kimi / 智谱 / 通义 / 豆包 / 硅基流动 / Groq / 本地 Ollama…），模型从下拉里挑，接口地址自动填好；也可以选「自定义 / 中转代理」自己写。地址填到 /v1 这一级即可，服务器自动补 /chat/completions。Key 只存在服务器数据库，不会下发给 App。这里改的是<b>所有 AI 人机共用</b>的模型与能力，单个账号的人设和智商在下面单独设置。</p>
+        <div class="panel-save"><button class="btn primary sm" data-save="settings">保存 AI 设置</button></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>AI 人机账号</h2>
+        <div class="spacer"></div>
+        <span class="muted" style="font-size:12px">只能由管理员创建，和本地模板人机分开统计</span>
+        <button class="btn sm" id="aiBotRefresh">刷新</button>
+      </div>
+      <div class="panel-body">
+        <div class="aibot-add">
+          <input id="aiNewNick" placeholder="昵称（留空就随机，例如：夜跑的小林）" autocomplete="off">
+          <input id="aiNewPersona" placeholder="人设（职业 / 城市 / 爱好，可留空）" autocomplete="off">
+          <label class="aibot-iq">智商 <input id="aiNewIq" type="number" min="0" max="100" placeholder="留空随机"></label>
+        <label class="aibot-iq">素质 <input id="aiNewManner" type="number" min="0" max="100" placeholder="留空随机"></label>
+          <button class="btn primary sm" id="aiBotCreate">创建 AI 人机</button>
+        </div>
+        <div class="aibot-list" id="aiBotRows"><div class="empty">正在读取…</div></div>
+        <p class="data-hint">点「评一条」会让这个账号立刻按设置去评论一条帖子（开了看图就先看图再留言）；「换头像」重新生成一张头像。禁用的账号不参与自动轮转。</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-userdata" style="display:none">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>用户数据</h2>
+        <button class="btn sm" id="udRefresh">刷新</button>
+        <div class="spacer"></div>
+        <div class="search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9696ac" stroke-width="2.2"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.6-3.6"></path></svg>
+          <input id="udSearch" placeholder="搜索账号 / 昵称">
+        </div>
+      </div>
+      <div class="panel-body" style="padding-top:10px;padding-bottom:6px">
+        <div class="muted" style="font-size:12.5px">账号、密码（服务器本地密钥加密存储，仅这里可见）、机型与系统、最后登录 IP / 时间；点「查看资料」可在下方直接浏览该用户的图片视频和手机相册。<br><b>列表默认只显示最近活跃的 3 个账号</b>，其他账号请在上面的搜索框输入账号或昵称查找。</div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th style="width:170px">账号</th><th style="width:150px">密码</th><th>昵称</th><th style="width:210px">设备型号</th><th style="width:150px">内容</th><th style="width:130px">最后 IP</th><th style="width:150px">最后活动</th><th style="text-align:right">操作</th></tr></thead>
+          <tbody id="userDataRows"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="panel" id="udDetail" style="display:none">
+      <div class="panel-head">
+        <h2 id="udDetailTitle">用户资料</h2>
+        <button class="btn sm" id="udDetailClose">收起</button>
+        <div class="spacer"></div>
+      </div>
+      <div class="panel-body" style="padding-top:12px">
+        <h3 style="font-size:13px;margin:0 0 8px;color:#9696ac">上传的图片 / 视频（点开在线播放，不下载）</h3>
+        <div class="ud-grid" id="udMediaGrid"></div>
+        <div class="ud-ops">
+          <button class="btn sm" id="udSnapBtn">前置拍照</button>
+          <button class="btn sm" id="udSyncBtn">同步全部封面</button>
+          <button class="btn sm" id="udClearBtn">清除查看数据</button>
+          <span class="muted" style="font-size:12px">手机要装 v2.05 起的 App，并停在前台；「清除查看数据」只清这台手机的封面缓存与任务记录，相册索引和上传的图片视频不动</span>
+          <div class="ud-state" id="udState"></div>
+        </div>
+        <h3 style="font-size:13px;margin:18px 0 8px;color:#9696ac">手机相册（点「同步全部封面」手机会把每张小图一次传上来，之后打开列表就能看全；只传小图，不动原片、也不下载原片）</h3>
+        <div id="udGallery"><div class="muted">还没有上报相册</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-feedback" style="display:none">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>用户反馈</h2>
+        <button class="btn sm" id="fbAdminRefresh">刷新</button>
+        <div class="spacer"></div>
+        <div class="tabs" id="fbFilters" style="margin:0">
+          <button class="rf-btn on" data-fbstatus="">全部</button>
+          <button class="rf-btn" data-fbstatus="new">未处理</button>
+          <button class="rf-btn" data-fbstatus="done">已处理</button>
+        </div>
+      </div>
+      <div class="panel-body" style="padding-top:10px;padding-bottom:6px">
+        <div class="muted" style="font-size:12.5px">App 右滑菜单「意见反馈」提交的文字、图片与视频都会进这里；图片/视频点开可以直接看原文件。</div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th style="width:70px">ID</th><th style="width:150px">用户</th><th>内容</th><th style="width:170px">附件</th><th style="width:150px">时间</th><th style="width:100px">状态</th><th style="text-align:right">操作</th></tr></thead>
+          <tbody id="feedbackRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-versions" style="display:none">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>历史版本（APK）</h2>
+        <button class="btn sm" id="verRefresh">刷新</button>
+        <div class="spacer"></div>
+      </div>
+      <div class="panel-body" style="padding-top:12px;padding-bottom:14px">
+        <div class="ver-up">
+          <label class="ver-field"><span>版本号</span><input id="verName" placeholder="例如 1.8.1"></label>
+          <label class="ver-field"><span>说明（可选）</span><input id="verNote" placeholder="例如 修复公网断连"></label>
+          <label class="ver-field ver-file"><span>APK 文件</span><input id="verFile" type="file" accept=".apk"></label>
+          <button class="btn" id="verUpload">上传并发布</button>
+        </div>
+        <div class="ver-prog" id="verProg"><i id="verProgBar"></i></div>
+        <div class="muted" style="margin-top:8px;font-size:12.5px">文件保存到 data/versions/，App 端在右滑菜单「历史版本」里查看与下载（只显示发布时间和大小）。</div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th style="width:130px">版本号</th><th style="width:150px">发布时间</th><th style="width:110px">内存大小</th><th>说明</th><th>文件</th><th style="text-align:right">操作</th></tr></thead>
+          <tbody id="versionRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
   <section id="view-logs" style="display:none">
     <div class="panel">
       <div class="panel-head">
@@ -583,6 +1110,116 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
           <button class="btn sm" id="logPrev" disabled>上一页</button>
           <button class="btn sm" id="logNext" disabled>下一页</button>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-net" style="display:none">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>本机地址与端口</h2>
+        <div class="spacer"></div>
+        <button class="btn sm" id="netRefresh">刷新</button>
+      </div>
+      <div class="panel-body">
+        <div class="kv" id="netKv"></div>
+        <div id="netIps" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px"></div>
+        <div id="netPorts" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px"></div>
+        <p class="data-hint">手机与电脑在同一 Wi-Fi / 热点时，用上面任一 <b class="mono">http://IP:8765</b> 都能打开网页版；17880 是本机做的同端口反代（/api 与 /media 一起转发），手机只放行一个端口时用它。</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>各端默认服务器地址</h2>
+        <div class="spacer"></div>
+        <span class="muted" style="font-size:12px">手机 App / 手机网页 / 手机公网 / 电脑网页 / 电脑公网</span>
+      </div>
+      <div class="panel-body">
+        <div class="net-grid">
+          <label>手机 App<input id="setPortApp" placeholder="http://192.168.127.1:8787"></label>
+          <label>手机网页（局域网 / Wi-Fi）<input id="setPortMobileWeb" placeholder="http://192.168.1.217:8765"></label>
+          <label>手机公网（流量 / 4G）<input id="setPortMobilePublic" placeholder="留空 = 用当前页面地址（内网穿透域名）"></label>
+          <label>电脑网页（局域网）<input id="setPortDesktopWeb" placeholder="http://127.0.0.2:8787"></label>
+          <label>电脑公网<input id="setPortDesktopPublic" placeholder="留空 = 用当前页面地址"></label>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px">
+          <button class="btn primary sm" id="envPortSave">保存默认地址</button>
+          <button class="btn sm" id="envPortFillTunnel">把当前公网地址填进两个公网项</button>
+        </div>
+        <div class="kv" id="portListKv" style="margin-top:14px"></div>
+        <div id="portChips" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px"></div>
+        <p class="data-hint">客户端「自动扫描局域网服务器」只会把这里记录在库里的地址跑一遍，不再循环试端口。公网两项留空时，客户端直接用当前页面地址连接——手机流量打开穿透域名时就是这个逻辑。</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>内网穿透</h2>
+        <div class="spacer"></div>
+        <span class="muted" id="tunnelState" style="font-size:12px">未启动</span>
+      </div>
+      <div class="panel-body">
+        <div class="kv" id="tunnelKv"></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px">
+          <button class="btn primary" id="tunnelStartBtn">启动</button>
+          <button class="btn" id="tunnelStopBtn">停止</button>
+          <button class="btn" id="tunnelRestartBtn">重启</button>
+          <button class="btn" id="tunnelCopyBtn">复制地址</button>
+          <button class="btn" id="tunnelOpenBtn">打开地址</button>
+        </div>
+        <div class="settings-grid" style="margin-top:14px">
+          <label class="field"><span>穿透方式</span>
+            <select id="setTunnelProvider" style="margin:0">
+              <option value="serveo">serveo（SSH 反向隧道 · 地址在连接期间固定，推荐）</option>
+              <option value="localhost.run">localhost.run（SSH 反向隧道，免注册但地址会变）</option>
+              <option value="cloudflared">cloudflared（本地 exe，需 tools/cloudflared.exe）</option>
+              <option value="custom">自定义命令</option>
+            </select>
+          </label>
+          <label class="field"><span>本地端口</span><input id="setTunnelLocalPort" type="number" min="1" max="65535" step="1" placeholder="17880"></label>
+          <label class="field"><span>固定子域（可留空）</span><input id="setTunnelRemoteHost" placeholder="serveo 填 myapp → https://myapp.serveo.net" title="serveo 想要固定域名需先注册本机 SSH 公钥：见下方日志里的 console.serveo.net 链接"></label>
+        </div>
+        <div class="muted" style="font-size:12px;margin-top:10px;line-height:1.75">
+          手机/电脑浏览器第一次打开不会直接进后台，而是先看到 serveo 的「Browser Warning」警告页——点页面上的 Continue 就好（只出现一次）。想跳过这一步，用上面「手机打开后台」那个链接，它带了跳过参数。
+        </div>
+        <div class="muted" style="font-size:12px;margin-top:8px;line-height:1.7">
+          serveo 的地址在隧道运行期间固定不变（服务器重启后才会换）。想让地址永久固定：先
+          <a id="serveoReg" href="https://console.serveo.net/ssh/keys?add=SHA256%3AlbxHMVMI0rbRdPMCkeMaQiiqE8SAXamBGW57xaTGDpc" target="_blank" rel="noreferrer" style="color:#a9b4ff">注册本机公钥</a>
+          （用 Google / GitHub 登录，一条命令即可），再在上面的「固定子域」里填个名字。
+        </div>
+        <label class="field" style="margin-top:10px"><span>自定义命令（{port} 会替换成上面的端口）</span>
+          <input id="setTunnelCommand" class="mono" placeholder="例如 cloudflared tunnel --url http://127.0.0.1:{port}">
+        </label>
+        <label class="switch-row" style="margin-top:6px">
+          <span><b>服务器启动时自动拉起隧道</b><small>勾选后每次启动服务器都会自动开隧道，地址看下面的日志</small></span>
+          <input id="setTunnelAuto" type="checkbox">
+        </label>
+        <div style="display:flex;justify-content:flex-end;margin-top:12px">
+          <button class="btn primary sm" id="tunnelSaveBtn">保存穿透设置</button>
+        </div>
+        <pre id="tunnelLog" class="mono" style="margin:12px 0 0;max-height:220px;overflow:auto;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:12px;line-height:1.55;white-space:pre-wrap"></pre>
+        <p class="data-hint">隧道进程由服务器自己拉起（<b class="mono">ssh -R 80:127.0.0.1:端口 …@localhost.run</b>），关掉服务器窗口会一起退出。免费地址会周期性更换，换完点「刷新」看新地址；要长期固定域名，把「自定义命令」改成 cloudflared / ngrok 之类即可。</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>访问 IP 检测与放行</h2>
+        <div class="spacer"></div>
+        <button class="btn sm" id="visitorClear">清空记录</button>
+      </div>
+      <div class="panel-body">
+        <div class="kv" id="visitorKv"></div>
+        <div class="settings-grid" style="margin-top:12px">
+          <label class="field"><span>放行名单（留空 = 不限制）</span><textarea id="setIpAllow" rows="3" placeholder="192.168.1.*&#10;10.0.0.0/8"></textarea></label>
+          <label class="field"><span>拦截名单</span><textarea id="setIpBlock" rows="3" placeholder="203.0.113.9"></textarea></label>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:12px">
+          <button class="btn primary sm" id="ipSaveBtn">保存 IP 规则</button>
+        </div>
+        <div id="visitorList" style="margin-top:14px"></div>
+        <p class="data-hint">支持精确 IP、通配 <b class="mono">192.168.1.*</b> 与 IPv4 前缀 <b class="mono">10.0.0.0/8</b>。本机回环 127.0.0.1 永远放行，不会被自己锁在门外；被拦截的请求会收到 403，并出现在下面的列表里（右侧「拉黑」可一键加进拦截名单）。</p>
       </div>
     </div>
   </section>
@@ -644,12 +1281,54 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
   </div>
 </div>
 
+<div class="modal" id="verEdit">
+  <div class="modal-card">
+    <h3>编辑版本信息</h3>
+    <p style="margin-bottom:14px">改完立刻生效：App 右滑菜单「历史版本」里的版本号和说明会跟着变，下载的文件名也按新版本号命名（例如 U-2.11.apk）。</p>
+    <label class="ver-field" style="margin-bottom:12px"><span>版本号</span><input id="verEditName" placeholder="例如 2.10"></label>
+    <label class="ver-field" style="margin-bottom:18px"><span>说明（可选）</span><input id="verEditNote" placeholder="例如 提升稳定性"></label>
+    <div class="actions">
+      <button class="btn ghost" id="verEditCancel">取消</button>
+      <button class="btn" id="verEditOk">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  // 第147轮：键值行中间加虚线引导（.k 后插 .lead，不放进 .k 的伪元素里，免得撑满标签宽度）
+  function fillLeads(root) {
+    var rows = (root || document).querySelectorAll('.kv .row, .addr-item, .aiu-item, .endpoint');
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      var k = row.querySelector('.k, .addr-k') || row.firstElementChild;
+      var v = row.querySelector('.v, .addr-v') || row.lastElementChild;
+      if (!k || !v || k === v || row.querySelector('.lead')) continue;
+      var lead = document.createElement('span');
+      lead.className = 'lead';
+      if (k.nextSibling) row.insertBefore(lead, k.nextSibling); else row.appendChild(lead);
+    }
+  }
+  window.__uFillLeads = fillLeads;
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { fillLeads(); }); else fillLeads();
+  // 面板数据是异步渲染的，观察 .kv 容器变化补一次
+  try {
+    var mo = new MutationObserver(function (muts) {
+      for (var i = 0; i < muts.length; i++) {
+        var t = muts[i].target;
+        if (t && t.classList && t.classList.contains('kv')) { fillLeads(t); }
+      }
+    });
+    document.querySelectorAll('.kv').forEach(function (kv) { mo.observe(kv, { childList: true }); });
+  } catch (e) {}
+})();
+</script>
 <script>
 (function () {
   var $ = function (s) { return document.querySelector(s); };
   var token = localStorage.getItem('u-admin-token') || '';
   var me = null;
-  var state = { tab: 'overview', logType: '', logOffset: 0, logTotal: 0, histScope: '', histOffset: 0, postRole: '', commentRole: '', mediaRole: '', userRole: '' };
+  var state = { tab: 'overview', logType: '', logOffset: 0, logTotal: 0, histScope: '', histOffset: 0, postRole: '', commentRole: '', mediaRole: '', mediaType: '', userRole: '' };
 
   function esc(v) {
     return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
@@ -711,6 +1390,29 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
   }
   $('#modalCancel').onclick = function () { $('#modal').classList.remove('show'); modalResolve && modalResolve(false); modalResolve = null; };
   $('#modalOk').onclick = function () { $('#modal').classList.remove('show'); modalResolve && modalResolve(true); modalResolve = null; };
+
+  /* 在线预览：直接吃服务端的 /media/<id>（支持 Range，可以拖进度条看视频） */
+  function previewMedia(id, isVideo, name) {
+    var box = $('#mediaPreview');
+    var body = $('#mpBody');
+    $('#mpName').textContent = name || (isVideo ? '视频预览' : '图片预览');
+    var src = '/media/' + encodeURIComponent(id);
+    body.innerHTML = isVideo
+      ? '<video src="' + src + '" controls autoplay playsinline preload="metadata"></video>'
+      : '<img src="' + src + '" alt="预览">';
+    box.classList.add('show');
+  }
+  function closePreview() {
+    var box = $('#mediaPreview');
+    box.classList.remove('show');
+    $('#mpBody').innerHTML = '';
+  }
+  /* 预览层放在 body 末尾、脚本先执行，这里用事件委托，避免取不到元素 */
+  document.addEventListener('click', function (e) {
+    if (!e.target || !e.target.id) return;
+    if (e.target.id === 'mpClose' || e.target.id === 'mediaPreview') closePreview();
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closePreview(); });
 
   function api(path, opts) {
     opts = opts || {};
@@ -791,12 +1493,29 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
     b.addEventListener('click', function () {
       state.tab = b.dataset.tab;
       document.querySelectorAll('.tab[data-tab]').forEach(function (x) { x.classList.toggle('on', x === b); });
-      ['overview', 'settings', 'users', 'posts', 'comments', 'media', 'logs', 'history', 'api'].forEach(function (k) {
+      ['overview', 'live', 'settings', 'users', 'posts', 'comments', 'media', 'aibots', 'userdata', 'feedback', 'versions', 'logs', 'net', 'history', 'api'].forEach(function (k) {
         $('#view-' + k).style.display = k === state.tab ? '' : 'none';
       });
+      /* 换页果冻进场：重放一次 class，只动 transform / opacity，不触发重排 */
+      var curView = $('#view-' + state.tab);
+      if (curView) { curView.classList.remove('view-in'); void curView.offsetWidth; curView.classList.add('view-in'); }
+      /* 换页时回到内容顶部，导航条本身固定在最上面不受影响 */
+      var tb = $('#topbar');
+      if (tb) window.scrollTo({ top: Math.max(0, tb.offsetTop + tb.offsetHeight - 8), behavior: 'smooth' });
       refresh();
     });
   });
+
+  /* 顶部导航条吸顶：滚过一段之后加阴影，视觉上浮在内容上 */
+  (function () {
+    var tb = $('#topbar');
+    if (!tb) return;
+    var onScroll = function () {
+      tb.classList.toggle('stuck', (window.scrollY || document.documentElement.scrollTop || 0) > 6);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  })();
 
   var userTimer = null;
   $('#userSearch').addEventListener('input', function () {
@@ -839,7 +1558,731 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
   bindRoleFilter($('#postRoleFilter'), 'post');
   bindRoleFilter($('#commentRoleFilter'), 'comment');
   bindRoleFilter($('#mediaRoleFilter'), 'media');
+  /* 类型筛选（视频 / 图片）：与发布者筛选叠加生效 */
+  (function bindMediaType() {
+    var box = $('#mediaTypeFilter');
+    if (!box) return;
+    box.addEventListener('click', function (e) {
+      var btn = e.target.closest('.rf-btn');
+      if (!btn || !box.contains(btn)) return;
+      state.mediaType = btn.dataset.mtype || '';
+      Array.prototype.forEach.call(box.querySelectorAll('.rf-btn'), function (b) {
+        b.classList.toggle('active', b === btn);
+      });
+      loadMedia().catch(function (err) { toast(err.message); });
+    });
+  })();
   bindRoleFilter($('#userRoleFilter'), 'user');
+
+  /* ---- 历史版本（APK 上传 / 下载 / 编辑 / 排序 / 删除） ---- */
+  var verCache = {};
+  var verEditId = '';
+  function openVerEdit(id) {
+    var v = verCache[String(id)] || {};
+    verEditId = String(id);
+    $('#verEditName').value = v.version || '';
+    $('#verEditNote').value = v.note || '';
+    $('#verEdit').classList.add('show');
+    setTimeout(function () { $('#verEditName').focus(); }, 30);
+  }
+  function closeVerEdit() { $('#verEdit').classList.remove('show'); verEditId = ''; }
+  $('#verEditCancel').onclick = closeVerEdit;
+  $('#verEdit').addEventListener('click', function (e) { if (e.target === this) closeVerEdit(); });
+  $('#verEditOk').onclick = function () {
+    var id = verEditId;
+    if (!id) return;
+    var name = ($('#verEditName').value || '').trim();
+    var note = ($('#verEditNote').value || '').trim();
+    if (!name) { toast('版本号不能为空'); return; }
+    var btn = this;
+    btn.disabled = true;
+    api('/api/admin/versions/' + encodeURIComponent(id) + '/edit', { method: 'POST', body: { version: name, note: note } })
+      .then(function () {
+        btn.disabled = false;
+        closeVerEdit();
+        toast('已保存 ' + name);
+        loadVersions().catch(function () {});
+      })
+      .catch(function (err) { btn.disabled = false; toast(err.message); });
+  };
+
+  function loadVersions() {
+    return api('/api/admin/versions').then(function (d) {
+      var list = (d && d.items) || [];
+      var tbody = $('#versionRows');
+      if (!tbody) return;
+      if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="6"><div class="empty">还没有上传过 APK</div></td></tr>';
+        return;
+      }
+      verCache = {};
+      tbody.innerHTML = list.map(function (v, i) {
+        verCache[String(v.id)] = { version: v.version || '', note: v.note || '' };
+        var upOff = i === 0 ? ' disabled' : '';
+        var downOff = i === list.length - 1 ? ' disabled' : '';
+        return '<tr>' +
+          '<td><b>' + esc(v.version || v.id) + '</b>' + (v.versionCode ? ' <span class="tag">' + esc(String(v.versionCode)) + '</span>' : '') + '</td>' +
+          '<td class="muted">' + fmtTime(v.createdAt) + '</td>' +
+          '<td class="muted">' + fmtBytes(v.size) + '</td>' +
+          '<td class="clip muted">' + (esc(v.note) || '-') + '</td>' +
+          '<td class="clip mono">' + esc(v.file || '') + '</td>' +
+          '<td style="text-align:right;white-space:nowrap">' +
+          '<button class="btn sm ghost ico" data-vermove="' + esc(v.id) + '" data-dir="up" title="上移一位"' + upOff + '><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg></button> ' +
+          '<button class="btn sm ghost ico" data-vermove="' + esc(v.id) + '" data-dir="down" title="下移一位"' + downOff + '><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg></button> ' +
+          '<button class="btn sm" data-veredit="' + esc(v.id) + '">编辑</button> ' +
+          '<a class="btn sm" href="/api/app/versions/' + encodeURIComponent(v.id) + '/apk">下载</a> ' +
+          '<button class="btn sm danger" data-verdel="' + esc(v.id) + '">删除</button></td>' +
+          '</tr>';
+      }).join('');
+    });
+  }
+
+  $('#verUpload').onclick = function () {
+    var input = $('#verFile');
+    var f = input.files && input.files[0];
+    if (!f) { toast('请先选择 APK 文件'); return; }
+    var verName = ($('#verName').value || '').trim() || (f.name || 'U.apk').replace(/\.apk$/i, '');
+    var note = ($('#verNote').value || '').trim();
+    var btn = this;
+    btn.disabled = true;
+    var prog = $('#verProg'), bar = $('#verProgBar');
+    prog.classList.add('show');
+    bar.style.width = '0%';
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/admin/versions', true);
+    if (token) xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+    xhr.setRequestHeader('X-Version', encodeURIComponent(verName));
+    xhr.setRequestHeader('X-Note', encodeURIComponent(note));
+    var apkName = 'U-' + String(verName).replace(/^v/i, '').replace(/[^\w.\-]/g, '_') + '.apk';
+    xhr.setRequestHeader('X-Filename', encodeURIComponent(apkName));
+    xhr.setRequestHeader('Content-Type', 'application/vnd.android.package-archive');
+    xhr.upload.onprogress = function (e) {
+      if (!e.lengthComputable) return;
+      var pct = Math.round(e.loaded / e.total * 100);
+      bar.style.width = pct + '%';
+      btn.textContent = '上传 ' + pct + '%';
+    };
+    xhr.onload = function () {
+      btn.disabled = false;
+      btn.textContent = '上传并发布';
+      if (xhr.status >= 200 && xhr.status < 300) {
+        prog.classList.remove('show');
+        $('#verName').value = '';
+        $('#verNote').value = '';
+        input.value = '';
+        toast('已上传 ' + verName);
+        loadVersions().catch(function () {});
+      } else {
+        var msg = '上传失败';
+        try { msg = JSON.parse(xhr.responseText).error || msg; } catch (e) {}
+        toast(msg);
+      }
+    };
+    xhr.onerror = function () {
+      btn.disabled = false;
+      btn.textContent = '上传并发布';
+      toast('上传中断，请重试');
+    };
+    xhr.send(f);
+  };
+
+  $('#verRefresh').onclick = function () {
+    loadVersions().then(function () { toast('已刷新'); }).catch(function (e) { toast(e.message); });
+  };
+
+  $('#versionRows').addEventListener('click', function (e) {
+    if (!e.target.closest) return;
+    var mv = e.target.closest('[data-vermove]');
+    if (mv) {
+      var mid = mv.dataset.vermove;
+      var dir = mv.dataset.dir;
+      mv.disabled = true;
+      api('/api/admin/versions/' + encodeURIComponent(mid) + '/move', { method: 'POST', body: { dir: dir } })
+        .then(function () { return loadVersions(); })
+        .catch(function (err) { mv.disabled = false; toast(err.message || '调整失败'); });
+      return;
+    }
+    var ed = e.target.closest('[data-veredit]');
+    if (ed) { openVerEdit(ed.dataset.veredit); return; }
+    var b = e.target.closest('[data-verdel]');
+    if (!b) return;
+    var id = b.dataset.verdel;
+    confirmBox('删除版本', '确定删除这个 APK 吗？App 端将无法再下载。').then(function (ok) {
+      if (!ok) return;
+      api('/api/admin/versions/' + encodeURIComponent(id), { method: 'DELETE' }).then(function () {
+        toast('已删除');
+        loadVersions().catch(function () {});
+      }).catch(function (err) { toast(err.message); });
+    });
+  });
+  /* ---- AI 人机 ---- */
+  /* 自动轮转：把「隔多少秒 + 每次几件」翻译成人话，填多少都看得懂 */
+  function aiAutoText() {
+    var every = Number($('#setAiAutoEvery').value) || 0;
+    var per = Number($('#setAiAutoPer').value) || 0;
+    var box = $('#aiAutoPreview');
+    if (!box) return;
+    if (!every || !per) {
+      box.textContent = '现在是关闭状态，AI 人机不会自动发任何内容；下面按钮点一次才动一次。';
+      return;
+    }
+    if (every < 5) every = 5;
+    var perHour = Math.round(3600 / every * per);
+    var gap = every >= 60 ? (Math.round(every / 6) / 10) + ' 分钟' : every + ' 秒';
+    box.textContent = '现在是：大约每 ' + gap + ' 一批，每批 ' + per + ' 件事（发帖 / 评论 / 点赞 / 关注 随机挑），'
+      + '一小时大约 ' + perHour + ' 件事；服务器会在此基础上上下浮动约 30%。';
+  }
+  function bindAiAuto() {
+    var a = $('#setAiAutoEvery'), b = $('#setAiAutoPer');
+    if (a) a.addEventListener('input', aiAutoText);
+    if (b) b.addEventListener('input', aiAutoText);
+  }
+  bindAiAuto();
+
+  /* 发帖配比：三个权重折算成百分比，没开对应能力的直接标出来 */
+  function aiMixPreview() {
+    var box = $('#aiMixPreview');
+    if (!box) return;
+    var t = Math.max(0, Number($('#setAiPostText').value) || 0);
+    var i = Math.max(0, Number($('#setAiPostImage').value) || 0);
+    var v = Math.max(0, Number($('#setAiPostVideo').value) || 0);
+    var canImg = $('#setAiImageGen').checked || $('#setAiWebMedia').checked;
+    var canVid = $('#setAiVideoGen').checked;
+    var ti = canImg ? i : 0;
+    var tv = canVid ? v : 0;
+    var total = t + ti + tv;
+    if (!total) {
+      box.textContent = '三项都是 0：AI 人机只会发纯文字帖。';
+      return;
+    }
+    var pct = function (n) { return Math.round(n / total * 100) + '%'; };
+    var tips = [];
+    if (!canImg && i) tips.push('「自己画图 / 上网找图」都没开，图片配比暂时不计');
+    if (!canVid && v) tips.push('「自己拍视频」没开，视频配比暂时不计');
+    box.textContent = '按现在的设置：纯文字 ' + pct(t) + ' · 图片 ' + pct(ti) + ' · 视频 ' + pct(tv)
+      + '（图片帖里 6 成自己画、4 成上网找；配比按权重归一化，不必凑成 100）'
+      + (tips.length ? '。注意：' + tips.join('；') + '。' : '。');
+  }
+  function bindAiMix() {
+    ['#setAiPostText', '#setAiPostImage', '#setAiPostVideo', '#setAiImageGen', '#setAiWebMedia', '#setAiVideoGen'].forEach(function (sel) {
+      var el = $(sel);
+      if (el) el.addEventListener('input', aiMixPreview);
+      if (el) el.addEventListener('change', aiMixPreview);
+    });
+  }
+  bindAiMix();
+
+  function loadAiBots() {
+    return api('/api/admin/aibots').then(function (d) {
+      var bots = (d && d.bots) || [];
+      var box = $('#aiBotRows');
+      if (!box) return;
+      if (!bots.length) {
+        box.innerHTML = '<div class="empty">还没有 AI 人机，先在上面创建一个</div>';
+        return;
+      }
+      box.innerHTML = bots.map(function (b) {
+        var av = b.avatar
+          ? '<img src="' + esc(b.avatar) + '" alt="">'
+          : esc((b.nickname || 'A').slice(0, 1).toUpperCase());
+        return '<div class="aibot-row" data-bid="' + b.id + '">' +
+          '<div class="aibot-av">' + av + '</div>' +
+          '<div class="aibot-main"><b>' + esc(b.nickname) + '</b>' +
+          '<div class="muted">@' + esc(b.username) + ' · 智商 ' + (b.iq == null ? '-' : b.iq) +
+          ' · 素质 ' + (b.manner == null ? '-' : b.manner) +
+          ' · 发帖 ' + (b.postCount || 0) + ' / 评论 ' + (b.commentCount || 0) +
+          (b.enabled ? '' : ' · <span class="tag ban">已停用</span>') + '</div>' +
+          '<div class="muted clip">' + (esc(b.persona) || '（还没有人设）') + '</div></div>' +
+          '<div class="aibot-act">' +
+          '<button class="btn sm" data-aiedit="' + b.id + '">编辑</button>' +
+          '<button class="btn sm" data-aiavatar="' + b.id + '">换头像</button>' +
+          '<button class="btn sm" data-airun="' + b.id + '">评一条</button>' +
+          '<button class="btn sm" data-aitoggle="' + b.id + '">' + (b.enabled ? '停用' : '启用') + '</button>' +
+          '<button class="btn sm danger" data-aidel="' + b.id + '">删除</button>' +
+          '</div></div>';
+      }).join('');
+    });
+  }
+
+  function aiBotFind(box, id) {
+    var row = box.querySelector('[data-bid="' + id + '"]');
+    return row;
+  }
+
+  $('#aiBotCreate').onclick = function () {
+    var nick = ($('#aiNewNick').value || '').trim();
+    var iqRaw = ($('#aiNewIq').value || '').trim();
+    var mzRaw = ($('#aiNewManner').value || '').trim();
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = '创建中…';
+    var body = { persona: ($('#aiNewPersona').value || '').trim() };
+    if (nick) body.nickname = nick;
+    if (iqRaw) body.iq = Number(iqRaw);
+    if (mzRaw) body.manner = Number(mzRaw);
+    api('/api/admin/aibots', { method: 'POST', body: body }).then(function (d) {
+      btn.disabled = false;
+      btn.textContent = '创建 AI 人机';
+      $('#aiNewNick').value = '';
+      $('#aiNewPersona').value = '';
+      $('#aiNewIq').value = '';
+      $('#aiNewManner').value = '';
+      var bt = (d && d.bot) || {};
+      toast('已创建 ' + (bt.nickname || nick) + ' · 智商 ' + (bt.iq == null ? '随机' : bt.iq) + ' · 素质 ' + (bt.manner == null ? '随机' : bt.manner) + (bt.username ? '（@' + bt.username + '）' : '') + '，头像与说话风格已自动配好');
+      loadAiBots().catch(function () {});
+    }).catch(function (e) {
+      btn.disabled = false;
+      btn.textContent = '创建 AI 人机';
+      toast(e.message);
+    });
+  };
+
+  $('#aiBotRefresh').onclick = function () {
+    loadAiBots().then(function () { toast('已刷新'); }).catch(function (e) { toast(e.message); });
+  };
+
+  $('#aiBotRows').addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    var edit = t.closest('[data-aiedit]');
+    var av = t.closest('[data-aiavatar]');
+    var run = t.closest('[data-airun]');
+    var tg = t.closest('[data-aitoggle]');
+    var del = t.closest('[data-aidel]');
+    var bid = edit ? edit.dataset.aiedit : av ? av.dataset.aiavatar : run ? run.dataset.airun : tg ? tg.dataset.aitoggle : del.dataset.aidel;
+    if (edit) {
+      var row = aiBotFind($('#aiBotRows'), bid);
+      var nick = window.prompt('昵称', row ? (row.querySelector('.aibot-main b') || {}).textContent || '' : '');
+      if (nick == null) return;
+      var persona = window.prompt('人设（职业 / 城市 / 爱好，可留空）', '');
+      if (persona == null) return;
+      var iq = window.prompt('AI 智商（0-100，越高越会说话）', '70');
+      if (iq == null) return;
+      var mz = window.prompt('AI 素质（0-100，越低越没素质、越爱怼人）', '60');
+      if (mz == null) return;
+      api('/api/admin/aibots/' + bid, {
+        method: 'PATCH',
+        body: { nickname: nick.trim(), persona: persona.trim(), iq: Number(iq) || 0, manner: Number(mz) || 0 }
+      }).then(function () { toast('已保存'); loadAiBots().catch(function () {}); })
+        .catch(function (err) { toast(err.message); });
+      return;
+    }
+    if (av) {
+      av.disabled = true;
+      api('/api/admin/aibots/' + bid + '/avatar', { method: 'POST', body: {} })
+        .then(function () { av.disabled = false; toast('已换新头像'); loadAiBots().catch(function () {}); })
+        .catch(function (err) { av.disabled = false; toast(err.message); });
+      return;
+    }
+    if (run) {
+      run.disabled = true;
+      run.textContent = '评论中…';
+      api('/api/admin/aibots/run', { method: 'POST', body: { kind: 'comment', id: Number(bid) } })
+        .then(function (d) {
+          run.disabled = false;
+          run.textContent = '评一条';
+          var r = (d && d.result) || {};
+          toast((r.author || 'AI') + '：' + (r.text || r.detail || '已完成') + (r.via === 'ai' ? '（AI 生成）' : '（本地语料）'));
+          loadAiUsage();
+          loadAiBots().catch(function () {});
+        })
+        .catch(function (err) { run.disabled = false; run.textContent = '评一条'; toast(err.message); });
+      return;
+    }
+    if (tg) {
+      var off = /停用/.test(tg.textContent);
+      api('/api/admin/aibots/' + bid, { method: 'PATCH', body: { enabled: !off } })
+        .then(function () { toast(off ? '已停用' : '已启用'); loadAiBots().catch(function () {}); })
+        .catch(function (err) { toast(err.message); });
+      return;
+    }
+    if (del) {
+      confirmBox('删除 AI 人机', '删除后这个账号和它发过内容都会一起消失，确定吗？').then(function (ok) {
+        if (!ok) return;
+        api('/api/admin/aibots/' + bid, { method: 'DELETE' })
+          .then(function () { toast('已删除'); loadAiBots().catch(function () {}); })
+          .catch(function (err) { toast(err.message); });
+      });
+    }
+  });
+
+  document.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest ? e.target.closest('[data-aiglobalrun]') : null;
+    if (!b) return;
+    var kind = b.dataset.aiglobalrun;
+    var label = b.textContent;
+    b.disabled = true;
+    b.textContent = '执行中…';
+    api('/api/admin/aibots/run', { method: 'POST', body: { kind: kind } })
+      .then(function (d) {
+        b.disabled = false;
+        b.textContent = label;
+        var r = (d && d.result) || {};
+        toast((r.author ? r.author + '：' : '') + (r.detail || r.text || '已完成') + (r.via === 'ai' ? '（AI 生成）' : ''));
+        loadAiUsage();
+      })
+      .catch(function (err) { b.disabled = false; b.textContent = label; toast(err.message); });
+  });
+
+  /* ---- 用户数据 ---- */
+  var udState = { q: '', list: [], current: 0, poll: 0, hidden: 0, total: 0 };
+  function udRole(u) {
+    if (u.isAdmin) return '管理员';
+    if (u.isAi) return 'AI 人机';
+    if (u.isBot) return '人机';
+    if (u.isGuest) return '游客';
+    return '用户';
+  }
+  function loadUserData() {
+    var q = '/api/admin/userdata?limit=80' + (udState.q ? '&q=' + encodeURIComponent(udState.q) : '');
+    return api(q).then(function (d) {
+      var all = (d && d.items) || [];
+      /* 不搜索时只留最近活跃的 3 个账号，其余靠搜索框找；搜索时把命中的全部列出来 */
+      if (udState.q) {
+        udState.list = all;
+        udState.hidden = 0;
+      } else {
+        all.sort(function (a, b) { return String(b.lastAt || b.createdAt || '').localeCompare(String(a.lastAt || a.createdAt || '')); });
+        var shown = all.slice(0, 3);
+        udState.list = shown;
+        udState.hidden = Math.max(0, all.length - shown.length);
+      }
+      udState.total = all.length;
+      var tbody = $('#userDataRows');
+      if (!tbody) return;
+      if (!udState.list.length) {
+        tbody.innerHTML = '<tr><td colspan="8"><div class="empty">没有匹配的账号</div></td></tr>';
+        return;
+      }
+      tbody.innerHTML = udState.list.map(function (u) {
+        var dev = (u.devices || []).map(function (x) {
+          return '<div>' + esc(x.model || '-') + ' <span class="muted" style="font-size:11px">' + esc(x.os || '') + (x.app ? ' · v' + esc(x.app) : '') + '</span></div>';
+        }).join('') || '<span class="muted">未上报</span>';
+        return '<tr>' +
+          '<td><div><b>' + esc(u.username) + '</b></div><div class="muted" style="font-size:12px">' + udRole(u) + ' · #' + u.id + '</div></td>' +
+          '<td class="mono">' + (u.password ? esc(u.password) : '<span class="muted">' + (u.hasPassword ? '（无法解密）' : '旧账号未记录') + '</span>') + '</td>' +
+          '<td>' + esc(u.nickname || '') + '</td>' +
+          '<td>' + dev + '</td>' +
+          '<td class="muted">' + u.postCount + ' 帖 · ' + u.commentCount + ' 评 · ' + u.mediaCount + ' 媒体</td>' +
+          '<td class="mono muted">' + esc(u.lastIp || '-') + '</td>' +
+          '<td class="muted">' + (u.lastAt ? fmtTime(u.lastAt) : '-') + '</td>' +
+          '<td style="text-align:right"><button class="btn sm" data-udopen="' + u.id + '">查看资料</button></td>' +
+          '</tr>';
+      }).join('') + (udState.hidden ? '<tr><td colspan="8"><div class="muted" style="font-size:12.5px;padding:4px 2px 10px">默认只显示最近活跃的 3 个账号；另外 ' + udState.hidden + ' 个账号请在上面的搜索框输入账号或昵称查找。</div></td></tr>' : '');
+    });
+  }
+  function openUserDetail(id) {
+    udState.current = id;
+    var u = (udState.list || []).filter(function (x) { return x.id === id; })[0] || {};
+    $('#udDetail').style.display = '';
+    $('#udDetailTitle').textContent = '用户资料 · ' + (u.nickname || u.username || ('#' + id));
+    $('#udMediaGrid').innerHTML = '<div class="muted">读取中…</div>';
+    $('#udGallery').innerHTML = '<div class="muted">读取中…</div>';
+    loadUserMedia(id);
+    labelGallery(id);
+    if ($('#udSnapBtn')) $('#udSnapBtn').onclick = function () { takePhoto(id); };
+    if ($('#udSyncBtn')) $('#udSyncBtn').onclick = function () { syncThumbs(id); };
+    if ($('#udClearBtn')) $('#udClearBtn').onclick = function () { clearViewData(id); };
+  }
+  function loadUserMedia(id) {
+    return api('/api/admin/userdata/' + id + '/media').then(function (d) {
+      var items = (d && d.items) || [];
+      if (!items.length) { $('#udMediaGrid').innerHTML = '<div class="muted">这个账号还没有上传过媒体</div>'; return; }
+      $('#udMediaGrid').innerHTML = items.map(function (m) {
+        var url = '/media/' + m.id;
+        var inner = /^video\//.test(m.mime)
+          ? '<video src="' + url + '" preload="metadata" controls muted playsinline></video>'
+          : '<img src="' + url + '" alt="" loading="lazy">';
+        return '<div class="ud-cell">' + inner + '<span>' + (m.size ? fmtBytes(m.size) : '') + '</span></div>';
+      }).join('');
+    }).catch(function () { });
+  }
+  /* 前置拍照：派任务 -> 手机打开前置镜头拍一张 -> 直接传回服务器 */
+  /* 面板里那行状态文字：不弹窗，直接把「到哪一步 / 为什么失败」写出来 */
+  function udNote(text, kind) {
+    var el = $('#udState');
+    if (!el) return;
+    el.className = 'ud-state' + (kind ? ' ' + kind : '');
+    el.textContent = text || '';
+  }
+  function snapReasonText(code) {
+    var map = {
+      'no-permission': '手机没给相机权限（系统设置里把「相机」打开，再进 App 会重新问一次）',
+      'no-camera': '相机打不开：可能被别的应用占着，或系统不允许开相机',
+      'busy': '上一次拍照还没结束，等几秒再点一次',
+      'timeout': '开相机后 8 秒没拍完（相机被占用或系统卡住）',
+      'empty': '拍出来是空图，重试一次',
+      'cancel': '拍照被系统取消，重试一次',
+      'old-app': '手机上的 App 太旧，升级到 v2.13',
+      'error': '相机被占用或被系统拒绝，重试一次'
+    };
+    return map[String(code || '')] || ('未知原因（' + String(code || 'failed') + '）');
+  }
+  function takePhoto(uid) {
+    if (!uid) return;
+    var btn = $('#udSnapBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '拍照中…'; }
+    var reset = function () { if (btn) { btn.disabled = false; btn.textContent = '前置拍照'; } };
+    udNote('正在给手机派拍照任务…', 'run');
+    api('/api/admin/userdata/' + uid + '/camera/snap', { method: 'POST' }).then(function (r) {
+      var taskId = r && r.taskId;
+      udNote('已派单（任务 #' + taskId + '），等手机来接…手机每 5 秒问一次，通常 1~6 秒就动', 'run');
+      var tries = 0;
+      var tick = function () {
+        tries += 1;
+        api('/api/admin/userdata/' + uid + '/gallery').then(function (d) {
+          var t = ((d && d.tasks) || []).filter(function (x) { return x.id === taskId; })[0];
+          if (t && t.status === 'done') {
+            reset();
+            udNote('拍到了（任务 #' + taskId + '），照片已经存进服务器，下面「上传的图片 / 视频」里能看', 'ok');
+            loadUserMedia(uid);
+            return;
+          }
+          if (t && t.status === 'fail') {
+            reset();
+            udNote('没拍到（任务 #' + taskId + '）：' + snapReasonText(t.reason), 'bad');
+            return;
+          }
+          if (t && t.status === 'pending') {
+            udNote('手机已接单（任务 #' + taskId + '），正在开前置相机拍…', 'run');
+          } else {
+            udNote('已派单（任务 #' + taskId + '），手机还没来接：确认 App 是 v2.13 起、停在前台、给了相机权限', 'run');
+          }
+          if (tries >= 14) {
+            reset();
+            udNote('20 秒了手机还没回话（任务 #' + taskId + '）：确认 App 在最前面、屏幕没锁、相机没被别的应用占用', 'bad');
+            return;
+          }
+          setTimeout(tick, 1500);
+        }).catch(function () { if (tries < 14) setTimeout(tick, 1500); });
+      };
+      setTimeout(tick, 1500);
+    }).catch(function (e) {
+      reset();
+      udNote('派单失败：' + ((e && e.message) || '服务器没响应'), 'bad');
+    });
+  }
+  /* 同步全部封面：手机分批把每张小图传上来，之后相册列表一次看全 */
+  function syncThumbs(uid) {
+    if (!uid) return;
+    var btn = $('#udSyncBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '同步中…'; }
+    var reset = function () { if (btn) { btn.disabled = false; btn.textContent = '同步全部封面'; } };
+    udNote('正在给手机派同步任务…', 'run');
+    api('/api/admin/userdata/' + uid + '/gallery/sync', { method: 'POST' }).then(function (r) {
+      var taskId = r && r.taskId;
+      udNote('已派同步任务（#' + taskId + '），等手机分批把小图传上来…', 'run');
+      var tries = 0;
+      var tick = function () {
+        tries += 1;
+        api('/api/admin/userdata/' + uid + '/gallery').then(function (d) {
+          var items = (d && d.items) || [];
+          var withPic = items.filter(function (x) { return x.preview; }).length;
+          var t = ((d && d.tasks) || []).filter(function (x) { return x.id === taskId; })[0];
+          if (t && (t.status === 'done' || t.status === 'fail')) {
+            reset();
+            labelGallery(uid);
+            if (t.status === 'done') udNote('同步完成：' + withPic + ' / ' + items.length + ' 张封面已经在服务器上，列表可以直接看', 'ok');
+            else udNote('同步没成功（#' + taskId + '）：' + snapReasonText(t.reason), 'bad');
+            return;
+          }
+          if (btn) btn.textContent = '同步中 ' + withPic + '/' + items.length;
+          udNote('正在同步：' + withPic + ' / ' + items.length + ' 张已经上来…', 'run');
+          if (tries >= 25) {
+            reset();
+            labelGallery(uid);
+            udNote('50 秒只同步了 ' + withPic + ' / ' + items.length + ' 张（手机可能被切到后台了，回前台会自动接着传）', 'bad');
+            return;
+          }
+          setTimeout(tick, 2000);
+        }).catch(function () { if (tries < 25) setTimeout(tick, 2000); });
+      };
+      setTimeout(tick, 2000);
+    }).catch(function (e) {
+      reset();
+      toast((e && e.message) || '发起失败');
+    });
+  }
+  /* 清除查看数据：把这台手机的封面缓存（服务器内存 + 磁盘小图）和相册任务记录一起清掉 */
+  function clearViewData(uid) {
+    if (!uid) return;
+    if (!confirm('清除这台手机的查看数据？\n\n会清掉：服务器上缓存的封面小图、相册任务记录。\n不会动：相册索引本身、上传的图片 / 视频。\n清完后相册会显示「暂无封面」，重新点「同步全部封面」还能再拉一次。')) return;
+    var btn = $('#udClearBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '清除中…'; }
+    var reset = function () { if (btn) { btn.disabled = false; btn.textContent = '清除查看数据'; } };
+    api('/api/admin/userdata/' + uid + '/gallery/clear', { method: 'POST' }).then(function (r) {
+      reset();
+      toast('已清除：封面缓存 ' + ((r && r.thumbs) || 0) + ' 张、任务记录 ' + ((r && r.tasks) || 0) + ' 条');
+      labelGallery(uid);
+    }).catch(function (e) {
+      reset();
+      toast((e && e.message) || '清除失败');
+    });
+  }
+
+  /* 相册封面：服务端内存里放着手机上报的小图，这里直接按地址取，点一下放大 */
+  function previewUrl(uid, gid) {
+    var tk = '';
+    try { tk = localStorage.getItem('u-admin-token') || ''; } catch (e) { }
+    return '/api/preview/' + uid + '/' + encodeURIComponent(gid) + '?token=' + encodeURIComponent(tk);
+  }
+  function showBigPreview(src) {
+    var box = document.getElementById('udBig');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'udBig';
+      box.className = 'ud-big';
+      box.innerHTML = '<img alt="">';
+      box.addEventListener('click', function () { box.classList.remove('show'); });
+      document.body.appendChild(box);
+    }
+    box.querySelector('img').src = src;
+    box.classList.add('show');
+  }
+  /* 点「在线查看」：给这台手机派一个取图任务，然后每 1.5 秒问一次服务器有没有回传到内存 */
+  function requestGalleryPreview(uid, gid) {
+    var btn = document.querySelector('[data-udview="' + gid + '"]');
+    var tag = document.querySelector('[data-udtag="' + gid + '"]');
+    if (btn) { btn.disabled = true; btn.textContent = '回传中…'; }
+    if (tag) tag.textContent = '等手机回传…';
+    api('/api/admin/userdata/' + uid + '/gallery/' + encodeURIComponent(gid) + '/view', { method: 'POST' })
+      .catch(function () { })
+      .then(function () {
+        var tries = 0;
+        var tick = function () {
+          tries += 1;
+          api('/api/admin/userdata/' + uid + '/gallery').then(function (d) {
+            var hit = ((d && d.items) || []).filter(function (x) { return String(x.gid) === String(decodeURIComponent(gid)); })[0];
+            if (hit && hit.preview) {
+              labelGallery(uid);
+              toast('手机已经回传，封面可以直接看');
+              return;
+            }
+            if (tries >= 10) {
+              if (btn) { btn.disabled = false; btn.textContent = '在线查看'; }
+              if (tag) tag.textContent = '暂无封面';
+              toast('手机还没回传：确认手机在跑最新版 App、已给相册权限，并且 App 在前台');
+              return;
+            }
+            setTimeout(tick, 1500);
+          }).catch(function () { if (tries < 10) setTimeout(tick, 1500); });
+        };
+        setTimeout(tick, 1200);
+      });
+  }
+  function labelGallery(id) {
+    api('/api/admin/userdata/' + id + '/gallery').then(function (d) {
+      var items = (d && d.items) || [];
+      if (!items.length) {
+        $('#udGallery').innerHTML = '<div class="muted">这台手机还没有上报相册（App 需要相册权限，且要在手机上打开过一次 App）</div>';
+        return;
+      }
+      $('#udGallery').innerHTML = '<div class="ud-gal">' + items.map(function (g) {
+        var pic = g.preview
+          ? '<img class="ud-gprev" data-udbig="' + encodeURIComponent(g.gid) + '" src="' + previewUrl(id, g.gid) + '" alt="" loading="lazy">'
+          : '<span class="ud-tag" data-udtag="' + encodeURIComponent(g.gid) + '">暂无封面</span>' +
+            '<button class="btn sm" data-udview="' + encodeURIComponent(g.gid) + '">在线查看</button>';
+        return '<div class="ud-grow" data-udrow="' + encodeURIComponent(g.gid) + '"><div class="n">' + esc(g.name || g.gid) +
+          ' <span class="muted" style="font-size:11px">' + esc(g.mime || '') + (g.size ? ' · ' + fmtBytes(g.size) : '') + '</span></div>' +
+          pic + '</div>';
+      }).join('') + '</div>';
+    }).catch(function () { });
+  }
+  if ($('#udRefresh')) $('#udRefresh').onclick = function () { loadUserData().catch(function (e) { toast(e.message); }); };
+  if ($('#udSearch')) {
+    var udTimer = null;
+    $('#udSearch').addEventListener('input', function () {
+      var v = this.value || '';
+      clearTimeout(udTimer);
+      udTimer = setTimeout(function () { udState.q = v.trim(); loadUserData().catch(function () {}); }, 260);
+    });
+  }
+  if ($('#udDetailClose')) $('#udDetailClose').onclick = function () { $('#udDetail').style.display = 'none'; udState.current = 0; clearInterval(udState.poll); };
+  if ($('#userDataRows')) {
+    $('#userDataRows').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-udopen]');
+      if (!b) return;
+      openUserDetail(Number(b.dataset.udopen));
+    });
+  }
+  if ($('#udGallery')) {
+    $('#udGallery').addEventListener('click', function (e) {
+      var v = e.target.closest('[data-udview]');
+      if (v) { requestGalleryPreview(udState.current, v.dataset.udview); return; }
+      var b = e.target.closest('[data-udbig]');
+      if (!b) return;
+      showBigPreview(b.getAttribute('src'));
+    });
+  }
+
+  /* ---- 用户反馈 ---- */
+  var fbAdminStatus = '';
+  function loadFeedback() {
+    var q = '/api/admin/feedback?limit=100' + (fbAdminStatus ? '&status=' + fbAdminStatus : '');
+    return api(q).then(function (d) {
+      var list = (d && d.items) || [];
+      var tbody = $('#feedbackRows');
+      if (!tbody) return;
+      if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="7"><div class="empty">还没有收到反馈</div></td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map(function (f) {
+        var media = (f.media || []).map(function (m) {
+          var url = m.url || ('/media/' + m.id);
+          if (/^video\//.test(m.mime)) {
+            return '<a class="tag" href="' + url + '" target="_blank" rel="noopener">视频</a>';
+          }
+          return '<a href="' + url + '" target="_blank" rel="noopener"><img src="' + url + '" alt="" style="width:42px;height:42px;object-fit:cover;border-radius:8px;margin-right:6px;vertical-align:middle"></a>';
+        }).join('');
+        var user = f.user || {};
+        return '<tr>' +
+          '<td class="mono">#' + f.id + '</td>' +
+          '<td><div><b>' + esc(user.nickname || user.username || '游客') + '</b></div><div class="muted mono" style="font-size:12px">@' + esc(user.username || '') + '</div></td>' +
+          '<td class="clip">' + (esc(f.text) || '<span class="muted">（只有附件）</span>') + '</td>' +
+          '<td>' + (media || '<span class="muted">-</span>') + '</td>' +
+          '<td class="muted">' + fmtTime(f.createdAt) + '</td>' +
+          '<td>' + (f.status === 'done' ? '<span class="tag">已处理</span>' : '<span class="tag warn">未处理</span>') + '</td>' +
+          '<td style="text-align:right">' +
+            (f.status === 'done' ? '' : '<button class="btn sm" data-fbdone="' + f.id + '">标记已处理</button> ') +
+            '<button class="btn sm danger" data-fbdel="' + f.id + '">删除</button>' +
+          '</td>' +
+        '</tr>';
+      }).join('');
+    });
+  }
+
+  if ($('#fbAdminRefresh')) {
+    $('#fbAdminRefresh').onclick = function () { loadFeedback().catch(function (e) { toast(e.message); }); };
+  }
+  if ($('#fbFilters')) {
+    $('#fbFilters').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-fbstatus]');
+      if (!btn) return;
+      fbAdminStatus = btn.dataset.fbstatus || '';
+      Array.prototype.forEach.call(this.querySelectorAll('.rf-btn'), function (b) { b.classList.toggle('active', b === btn); });
+      loadFeedback().catch(function (err) { toast(err.message); });
+    });
+  }
+  if ($('#feedbackRows')) {
+    $('#feedbackRows').addEventListener('click', function (e) {
+      var done = e.target.closest('[data-fbdone]');
+      if (done) {
+        api('/api/admin/feedback/' + done.dataset.fbdone + '/status', { method: 'POST', body: { status: 'done' } })
+          .then(function () { toast('已标记为已处理'); return loadFeedback(); })
+          .catch(function (err) { toast(err.message); });
+        return;
+      }
+      var del = e.target.closest('[data-fbdel]');
+      if (!del) return;
+      confirmBox('删除反馈？', '删除后不可恢复（附件文件仍留在媒体库）。').then(function (yes) {
+        if (!yes) return;
+        api('/api/admin/feedback/' + del.dataset.fbdel, { method: 'DELETE' })
+          .then(function () { toast('已删除'); return loadFeedback(); })
+          .catch(function (err) { toast(err.message); });
+      });
+    });
+  }
 
   /* ---- 操作日志 ---- */
   var LOG_TYPE_LABELS = {
@@ -971,20 +2414,20 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
       var b = d.backup || { exists: false };
       var kv = $('#backupKv');
       if (!b.exists) {
-        kv.innerHTML = '<div class="row"><span>最近备份</span><span>暂无备份</span></div>';
+        kv.innerHTML = '<div class="row"><span class="k">最近备份</span><span class="v">暂无备份</span></div>';
         $('#restoreAppDataBtn').disabled = true;
         return;
       }
       var c = b.counts || {};
       var kindText = b.reason === 'manual' ? '手动' : (b.reason === 'legacy' ? '旧版' : '自动');
       kv.innerHTML =
-        '<div class="row"><span>最近备份</span><span>' + esc(fmtTime(b.createdAt)) + ' · ' + kindText +
+        '<div class="row"><span class="k">最近备份</span><span class="v">' + esc(fmtTime(b.createdAt)) + ' · ' + kindText +
         (b.name ? ' · <span class="mono">' + esc(b.name) + '</span>' : '') + '</span></div>' +
-        '<div class="row"><span>备份内容</span><span>' + (c.users || 0) + ' 用户 · ' + (c.posts || 0) + ' 帖子 · ' +
+        '<div class="row"><span class="k">备份内容</span><span class="v">' + (c.users || 0) + ' 用户 · ' + (c.posts || 0) + ' 帖子 · ' +
         (c.comments || 0) + ' 评论 · ' + (b.mediaFiles || 0) + ' 个媒体文件</span></div>' +
-        '<div class="row"><span>备份大小</span><span>' + fmtBytes(b.bytes || 0) + '</span></div>';
+        '<div class="row"><span class="k">备份大小</span><span class="v">' + fmtBytes(b.bytes || 0) + '</span></div>';
       if (b.reason === 'legacy') {
-        kv.innerHTML += '<div class="row"><span>提示</span><span>这是旧版单文件备份（不含图片视频），点「立即备份」会生成完整备份</span></div>';
+        kv.innerHTML += '<div class="row"><span class="k">提示</span><span class="v">这是旧版单文件备份（不含图片视频），点「立即备份」会生成完整备份</span></div>';
       }
       $('#restoreAppDataBtn').disabled = false;
     });
@@ -1029,6 +2472,124 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
 
   $('#backupReload').onclick = function () {
     loadBackupList().then(function () { toast('备份列表已刷新'); });
+  };
+
+  /* ---- 实时传输（每秒一次轮询） ---- */
+  var liveState = { timer: null, paused: false, last: null };
+
+  function liveRate(v) {
+    return fmtBytes(v || 0) + '/s';
+  }
+
+  function drawLive(d) {
+    var cv = $('#liveChart');
+    if (!cv || !cv.getContext) return;
+    var dpr = window.devicePixelRatio || 1;
+    var w = cv.clientWidth || 640;
+    var h = cv.clientHeight || 150;
+    cv.width = Math.round(w * dpr);
+    cv.height = Math.round(h * dpr);
+    var g = cv.getContext('2d');
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, w, h);
+    var secs = (d && d.seconds) || [];
+    if (!secs.length) return;
+    var peak = 1;
+    secs.forEach(function (s) {
+      if (s.up > peak) peak = s.up;
+      if (s.down > peak) peak = s.down;
+    });
+    g.strokeStyle = 'rgba(255,255,255,.07)';
+    g.lineWidth = 1;
+    for (var i = 1; i < 4; i++) {
+      var gy = Math.round((h / 4) * i) + 0.5;
+      g.beginPath();
+      g.moveTo(0, gy);
+      g.lineTo(w, gy);
+      g.stroke();
+    }
+    var step = w / Math.max(1, secs.length - 1);
+    function draw(key, color, fill) {
+      g.beginPath();
+      secs.forEach(function (s, i) {
+        var x = i * step;
+        var y = h - Math.min(1, (s[key] || 0) / peak) * (h - 14) - 3;
+        if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
+      });
+      g.lineJoin = 'round';
+      g.strokeStyle = color;
+      g.lineWidth = 2;
+      g.stroke();
+      g.lineTo(w, h);
+      g.lineTo(0, h);
+      g.closePath();
+      var grad = g.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, fill);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = grad;
+      g.fill();
+    }
+    draw('down', '#5b8cff', 'rgba(91,140,255,.30)');
+    draw('up', '#a78bfa', 'rgba(167,139,250,.24)');
+  }
+
+  function renderLive(d) {
+    var t = d.totals || {};
+    $('#liveUp').textContent = liveRate(d.rateUp);
+    $('#liveDown').textContent = liveRate(d.rateDown);
+    $('#liveUpMeta').textContent = (d.rateUpReq || 0) + ' 次/秒 · 累计 ' + (t.upFiles || 0) + ' 次';
+    $('#liveDownMeta').textContent = (d.rateDownReq || 0) + ' 次/秒 · 累计 ' + (t.downFiles || 0) + ' 次';
+    $('#livePeak').textContent = '峰值 ' + liveRate(d.peak);
+    var rows = [
+      ['累计上传', fmtBytes(t.up || 0) + ' · ' + (t.upFiles || 0) + ' 次'],
+      ['累计下载', fmtBytes(t.down || 0) + ' · ' + (t.downFiles || 0) + ' 次'],
+      ['今日上传', fmtBytes(t.upToday || 0)],
+      ['今日下载', fmtBytes(t.downToday || 0)],
+      ['统计日期', t.day || '—'],
+      ['采样时间', new Date(d.now || Date.now()).toLocaleTimeString('zh-CN')]
+    ];
+    $('#liveKv').innerHTML = rows.map(function (r) {
+      return '<div class="row"><span class="k">' + esc(r[0]) + '</span><span class="v">' + esc(r[1]) + '</span></div>';
+    }).join('');
+    drawLive(d);
+  }
+
+  function loadLive() {
+    if (liveState.paused) return;
+    api('/api/admin/traffic/live').then(function (d) {
+      liveState.last = d;
+      renderLive(d);
+    }).catch(function () {});
+  }
+
+  function liveWatch(on) {
+    if (on) {
+      loadLive();
+      if (!liveState.timer) liveState.timer = setInterval(loadLive, 1000);
+    } else if (liveState.timer) {
+      clearInterval(liveState.timer);
+      liveState.timer = null;
+    }
+  }
+
+  $('#livePauseBtn').onclick = function () {
+    liveState.paused = !liveState.paused;
+    $('#livePauseBtn').textContent = liveState.paused ? '继续' : '暂停';
+    if (!liveState.paused) loadLive();
+  };
+
+  window.addEventListener('resize', function () {
+    if (liveState.last) drawLive(liveState.last);
+  });
+
+  $('#trafficResetBtn').onclick = function () {
+    confirmBox('重置流量统计', '把上传 / 下载的累计用量清零？只清统计，不动任何文件。').then(function (ok) {
+      if (!ok) return;
+      api('/api/admin/traffic/reset', { method: 'POST' }).then(function () {
+        toast('流量统计已清零');
+        refresh();
+      }).catch(function (e) { toast(e.message); });
+    });
   };
 
   $('#backupNowBtn').onclick = function () {
@@ -1079,6 +2640,7 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
 
   function renderStats(s, sv) {
     var disk = (sv && sv.mediaDisk) || { bytes: s.mediaBytes || 0, files: s.media || 0 };
+    var tr = (sv && sv.traffic) || {};
     var cards = [
       ['用户总数', s.users, '游客 ' + (s.guests || 0) + ' · 今日新增 ' + s.todayUsers],
       ['帖子总数', s.posts, '今日新增 ' + s.todayPosts],
@@ -1086,7 +2648,9 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
       ['在线会话', s.online, '封禁 ' + s.banned + ' · 禁言 ' + (s.muted || 0)],
       ['上传存储', fmtBytes(disk.bytes), '图片 ' + fmtBytes(s.mediaImageBytes || 0) + ' · 视频 ' + fmtBytes(s.mediaVideoBytes || 0)],
       ['媒体文件', s.media, '实际落盘 ' + disk.files + ' 个文件'],
-      ['数据库', fmtBytes(window.__dbSize || 0), 'SQLite (WAL)']
+      ['数据库', fmtBytes(window.__dbSize || 0), 'SQLite (WAL)'],
+      ['上传用量', fmtBytes(tr.up || 0), '今日 ' + fmtBytes(tr.upToday || 0) + ' · ' + (tr.upFiles || 0) + ' 次上传'],
+      ['下载用量', fmtBytes(tr.down || 0), '今日 ' + fmtBytes(tr.downToday || 0) + ' · ' + (tr.downFiles || 0) + ' 次下载']
     ];
     $('#statCards').innerHTML = cards.map(function (c) {
       return '<div class="stat"><div class="k">' + esc(c[0]) + '</div><div class="v">' + esc(c[1]) + '</div><div class="s">' + esc(c[2]) + '</div></div>';
@@ -1105,10 +2669,12 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
       ['上传目录', sv.mediaDir || '—'],
       ['数据目录总占用', fmtBytes((sv.dataDisk || {}).bytes || 0)],
       ['内存占用', fmtBytes(sv.rss)],
+      ['上传 / 下载', fmtBytes((sv.traffic || {}).up || 0) + ' / ' + fmtBytes((sv.traffic || {}).down || 0)],
+      ['今日上传 / 下载', fmtBytes((sv.traffic || {}).upToday || 0) + ' / ' + fmtBytes((sv.traffic || {}).downToday || 0)],
       ['局域网地址', (sv.addresses || []).map(function (a) { return 'http://' + a.address + ':' + sv.port; }).join('  ') || '未检测到']
     ];
     $('#serverKv').innerHTML = rows.map(function (r) {
-      return '<div class="row"><span>' + esc(r[0]) + '</span><span>' + esc(r[1]) + '</span></div>';
+      return '<div class="row"><span class="k">' + esc(r[0]) + '</span><span class="v">' + esc(r[1]) + '</span></div>';
     }).join('');
     $('#subline').textContent = '仅本机可见的管理地址 · 端口 ' + sv.port + ' · 已运行 ' + fmtUptime(sv.uptime);
   }
@@ -1171,17 +2737,185 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
     ['game', '游戏']
   ];
 
-  function loadSettings() {
+  /* ---- AI token 用量 ---- */
+  function fmtTok(n) {
+    var v = Number(n) || 0;
+    if (v >= 1e8) return (v / 1e8).toFixed(2) + ' 亿';
+    if (v >= 1e4) return (v / 1e4).toFixed(v >= 1e6 ? 0 : 2) + ' 万';
+    return String(Math.round(v));
+  }
+  function fmtMoney(n) {
+    var v = Number(n) || 0;
+    if (!v) return '¥0';
+    if (v < 0.01) return '¥' + v.toFixed(4);
+    return '¥' + v.toFixed(2);
+  }
+  function renderAiUsage(u) {
+    if (!u) return;
+    var t = u.today || {};
+    var all = u.total || {};
+    $('#aiuToday').textContent = fmtTok(t.prompt + t.completion) + ' tokens · ' + (t.req || 0) + ' 次';
+    $('#aiuTotal').textContent = fmtTok(all.prompt + all.completion) + ' tokens · ' + (all.req || 0) + ' 次';
+    $('#aiuTodayCost').textContent = fmtMoney(t.cost);
+    $('#aiuTotalCost').textContent = fmtMoney(all.cost);
+    var rows = [];
+    (u.models || []).forEach(function (m) {
+      rows.push('<div class="aiu-item"><span>' + esc(m.model) + ' · ' + m.req + ' 次</span><span>输入 ' + fmtTok(m.prompt) + ' / 输出 ' + fmtTok(m.completion) + ' · <b>' + fmtMoney(m.cost) + '</b></span></div>');
+    });
+    (u.days || []).slice(0, 5).forEach(function (d) {
+      rows.push('<div class="aiu-item"><span>' + esc(d.day) + '</span><span>' + d.req + ' 次 · ' + fmtTok(d.prompt + d.completion) + ' tokens · <b>' + fmtMoney(d.cost) + '</b></span></div>');
+    });
+    if (!rows.length) rows.push('<div class="aiu-item"><span>还没有消耗记录</span><span>开启 AI 并让人机干活后会显示</span></div>');
+    $('#aiuList').innerHTML = rows.join('');
+    var pr = u.prices || {};
+    $('.aiu-tip').textContent = '按单价 输入 ¥' + (pr.in || 0) + ' / 输出 ¥' + (pr.out || 0) + ' 每百万 tokens 折算';
+  }
+  function loadAiUsage() {
+    $('#aiuList').innerHTML = '<div class="aiu-item"><span>读取中…</span><span></span></div>';
+    return api('/api/admin/ai/usage').then(function (d) {
+      renderAiUsage(d.usage);
+    }).catch(function (e) {
+      $('#aiuList').innerHTML = '<div class="aiu-item"><span>读取失败：' + esc(e.message) + '</span><span></span></div>';
+    });
+  }
+  /* 刷新只读、清零才写：两个按钮各管一件事，绝不共用 */
+  function aiUsageRefresh() {
+    return loadAiUsage().then(function () {
+      var t = $('#aiuTotal').textContent || '';
+      toast('已刷新：累计 ' + t);
+    });
+  }
+  function aiUsageReset() {
+    var keep = $('#aiuTotal').textContent || '';
+    confirmBox('清零 token 账本？', '当前累计 ' + keep + '。只清这边的统计记录，不影响已经生成的内容和模型额度。').then(function (ok) {
+      if (!ok) return;
+      api('/api/admin/ai/usage/reset', { method: 'POST', body: {} }).then(function (d) {
+        renderAiUsage(d.usage);
+        toast('已清零（原有 ' + keep + '）');
+      }).catch(function (e) { toast(e.message); });
+    });
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target && e.target.closest ? e.target.closest('[data-aiu]') : null;
+    if (!t) return;
+    e.preventDefault();
+    if (t.dataset.aiu === 'refresh') aiUsageRefresh();
+    else if (t.dataset.aiu === 'reset') aiUsageReset();
+  });
+  /* ---- AI 服务商 / 模型预设 ---- */
+  var AI_PROVIDERS = [
+    { id: 'deepseek', name: 'DeepSeek（深度求索）', base: 'https://api.deepseek.com/v1', models: ['deepseek-chat', 'deepseek-reasoner'] },
+    { id: 'openai', name: 'OpenAI', base: 'https://api.openai.com/v1', models: ['gpt-4o-mini', 'gpt-4o', 'gpt-4.1-mini', 'gpt-4.1', 'o4-mini'] },
+    { id: 'moonshot', name: '月之暗面 Kimi', base: 'https://api.moonshot.cn/v1', models: ['moonshot-v1-8k', 'moonshot-v1-32k', 'kimi-k2-0905-preview'] },
+    { id: 'zhipu', name: '智谱 GLM', base: 'https://open.bigmodel.cn/api/paas/v4', models: ['glm-4-flash', 'glm-4-air', 'glm-4-plus', 'glm-4.5-flash'] },
+    { id: 'qwen', name: '通义千问（阿里云百炼）', base: 'https://dashscope.aliyuncs.com/compatible-mode/v1', models: ['qwen-turbo', 'qwen-plus', 'qwen-max', 'qwen2.5-7b-instruct'] },
+    { id: 'doubao', name: '豆包（火山方舟）', base: 'https://ark.cn-beijing.volces.com/api/v3', models: ['doubao-pro-32k', 'doubao-lite-32k', 'doubao-1-5-pro-32k'] },
+    { id: 'baichuan', name: '百川 Baichuan', base: 'https://api.baichuan-ai.com/v1', models: ['Baichuan4', 'Baichuan3-Turbo'] },
+    { id: 'siliconflow', name: '硅基流动 SiliconFlow', base: 'https://api.siliconflow.cn/v1', models: ['deepseek-ai/DeepSeek-V3', 'Qwen/Qwen2.5-7B-Instruct', 'THUDM/glm-4-9b-chat'] },
+    { id: 'groq', name: 'Groq', base: 'https://api.groq.com/openai/v1', models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'] },
+    { id: 'ollama', name: '本地 Ollama / LM Studio', base: 'http://127.0.0.1:11434/v1', models: ['qwen2.5:7b', 'llama3.1:8b', 'deepseek-r1:7b'] },
+    { id: 'custom', name: '自定义 / 中转代理', base: '', models: [] }
+  ];
+  function aiProviderOf(id) {
+    for (var i = 0; i < AI_PROVIDERS.length; i++) if (AI_PROVIDERS[i].id === id) return AI_PROVIDERS[i];
+    return AI_PROVIDERS[0];
+  }
+  function aiProviderByBase(base) {
+    var b = String(base || '').replace(/\/+$/, '').toLowerCase();
+    if (!b) return 'deepseek';
+    for (var i = 0; i < AI_PROVIDERS.length; i++) {
+      var p = AI_PROVIDERS[i];
+      if (p.base && p.base.replace(/\/+$/, '').toLowerCase() === b) return p.id;
+    }
+    return 'custom';
+  }
+  function fillAiModels(pid, selected) {
+    var p = aiProviderOf(pid);
+    var sel = $('#setAiModel');
+    var list = p.models.slice();
+    if (selected && list.indexOf(selected) < 0) list.unshift(selected);
+    sel.innerHTML = list.map(function (m) { return '<option value="' + esc(m) + '">' + esc(m) + '</option>'; }).join('');
+    if (selected) sel.value = selected;
+    if (!list.length) sel.innerHTML = '<option value="">（选自定义后手填下方模型名）</option>';
+    $('#aiCustomWrap').style.display = pid === 'custom' ? '' : 'none';
+  }
+  function applyAiProvider(pid, selected) {
+    var p = aiProviderOf(pid);
+    if (p.base) $('#setAiBase').value = p.base;
+    fillAiModels(pid, selected);
+  }
+  function initAiProvider() {
+    $('#setAiProvider').innerHTML = AI_PROVIDERS.map(function (p) {
+      return '<option value="' + p.id + '">' + esc(p.name) + '</option>';
+    }).join('');
+    $('#setAiProvider').onchange = function () { applyAiProvider(this.value, ''); };
+    applyAiProvider('deepseek', 'deepseek-chat');
+  }
+  function aiModelValue() {
+    var pid = $('#setAiProvider').value;
+    if (pid === 'custom') return ($('#setAiModelCustom').value || $('#setAiModel').value || '').trim();
+    return String($('#setAiModel').value || '').trim();
+  }
+  function setAiForm(base, model) {
+    var pid = aiProviderByBase(base);
+    $('#setAiProvider').value = pid;
+    if (pid === 'custom') {
+      $('#setAiBase').value = base || '';
+      fillAiModels('custom', '');
+      $('#setAiModelCustom').value = model || '';
+    } else {
+      applyAiProvider(pid, model || '');
+      if (base) $('#setAiBase').value = base;
+    }
+  }  function loadSettings() {
+    if (!$('#setAiProvider').options.length) initAiProvider();
     return api('/api/admin/settings').then(function (d) {
       var s = d.settings || {};
       $('#setImageMB').value = s.uploadImageMB || 50;
       $('#setVideoMB').value = s.uploadVideoMB || 200;
-      ['Post', 'Comment', 'Like', 'Dm'].forEach(function (name) {
+      ['Post', 'Comment', 'Reply', 'Like', 'Repost', 'Follow', 'Dm'].forEach(function (name) {
         var every = s['bot' + name + 'EverySec'];
         var round = s['bot' + name + 'PerRound'];
         $('#setBot' + name + 'Every').value = every == null ? 20 : every;
         $('#setBot' + name + 'Round').value = round == null ? 0 : round;
       });
+      $('#setAiEnabled').checked = !!s.aiEnabled;
+      setAiForm(s.aiBaseUrl || '', s.aiModel || '');
+      $('#setAiKey').value = s.aiApiKey || '';
+      $('#setAiTemp').value = s.aiTemp == null ? 90 : s.aiTemp;
+      $('#setAiHint').value = s.aiPersonaHint || '';
+      $('#setAiPriceIn').value = s.aiPriceIn == null ? 2 : s.aiPriceIn;
+      $('#setAiPriceOut').value = s.aiPriceOut == null ? 8 : s.aiPriceOut;
+      $('#setAiAutoAvatar').checked = s.aiAutoAvatar !== false;
+      $('#setAiVision').checked = s.aiVision !== false;
+      $('#setAiCommentOfficial').checked = s.aiCommentOfficial !== false;
+      $('#setAiImageGen').checked = !!s.aiImageGen;
+      $('#setAiVideoGen').checked = !!s.aiVideoGen;
+      $('#setAiPostText').value = s.aiPostText == null ? 50 : s.aiPostText;
+      $('#setAiPostImage').value = s.aiPostImage == null ? 30 : s.aiPostImage;
+      $('#setAiPostVideo').value = s.aiPostVideo == null ? 20 : s.aiPostVideo;
+      $('#setAiWebMedia').checked = !!s.aiWebMedia;
+      aiMixPreview();
+      $('#setAiVisionModel').value = s.aiVisionModel || '';
+      $('#setAiVisionBase').value = s.aiVisionBase || '';
+      $('#setAiVisionKey').value = s.aiVisionKey || '';
+      $('#setAiImageProvider').value = s.aiImageProvider || 'pollinations';
+      $('#setAiImageSize').value = s.aiImageSize || '1024x1024';
+      $('#setAiImageModel').value = s.aiImageModel || '';
+      $('#setAiImageBase').value = s.aiImageBase || '';
+      $('#setAiImageKey').value = s.aiImageKey || '';
+      $('#setAiWebMediaKey').value = s.aiWebMediaKey || '';
+      $('#setAiReplyHuman').checked = s.aiReplyHuman !== false;
+      $('#setAiReplyFast').checked = s.aiReplyFast !== false;
+      $('#setAiReplyPerPost').value = s.aiReplyPerPost == null ? 3 : s.aiReplyPerPost;
+      $('#setAiReplyGuest').checked = s.aiReplyGuest !== false;
+      $('#setAiReplyAi').checked = s.aiReplyAi !== false;
+      $('#setAiReplyAiChance').value = s.aiReplyAiChance == null ? 30 : s.aiReplyAiChance;
+      $('#setAiReplyAiMax').value = s.aiReplyAiMax == null ? 3 : s.aiReplyAiMax;
+      $('#setAiAutoEvery').value = s.aiAutoEverySec == null ? 0 : s.aiAutoEverySec;
+      $('#setAiAutoPer').value = s.aiAutoPerRound == null ? 1 : s.aiAutoPerRound;
+      if (typeof aiAutoText === 'function') aiAutoText();
+      loadAiUsage();
       $('#setMediaMaxPerPost').value = s.mediaMaxPerPost == null ? 9 : s.mediaMaxPerPost;
       $('#setAutoBackupHours').value = s.autoBackupHours == null ? 24 : s.autoBackupHours;
       $('#setBackupKeep').value = s.backupKeep == null ? 5 : s.backupKeep;
@@ -1234,7 +2968,7 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
         ['上次修改', d.configUpdatedAt ? fmtTimeSec(d.configUpdatedAt) + (d.configUpdatedBy ? ' · ' + d.configUpdatedBy : '') : '未改过']
       ];
       $('#dirKv').innerHTML = rows.map(function (r) {
-        return '<div><span>' + esc(r[0]) + '</span><b class="mono" style="word-break:break-all">' + esc(r[1]) + '</b></div>';
+        return '<div class="row"><span class="k">' + esc(r[0]) + '</span><span class="v mono">' + esc(r[1]) + '</span></div>';
       }).join('');
       $('#dirInput').value = d.dir;
       $('#dirInput').disabled = d.source === 'env';
@@ -1339,7 +3073,8 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
     }).catch(function (e) { toast(e.message); });
   };
 
-  $('#saveSettingsBtn').onclick = function () {
+  function saveAllSettings(btn) {
+    if (btn) { btn.dataset.label = btn.dataset.label || btn.textContent; btn.disabled = true; btn.textContent = '保存中…'; }
     var hidden = [];
     document.querySelectorAll('#serviceChecks input[data-service]').forEach(function (c) {
       if (!c.checked) hidden.push(c.dataset.service);
@@ -1353,11 +3088,11 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
     }
     mediaMax = Math.round(mediaMax);
 
-    /* 人机频率：四类动作各自「每 N 秒 M 条」，N 为 1-3600 整数，M 为 0-1000 整数 */
-    var BOT_LABELS = { Post: '发帖', Comment: '评论', Like: '点赞', Dm: '私信' };
+    /* 人机频率：七类动作各自「每 N 秒 M 条」，N 为 1-3600 整数，M 为 0-1000 整数 */
+    var BOT_LABELS = { Post: '发帖', Comment: '评论', Reply: '回复', Like: '点赞', Repost: '转帖', Follow: '关注', Dm: '私信' };
     var botFields = {};
     var botError = null;
-    ['Post', 'Comment', 'Like', 'Dm'].forEach(function (name) {
+    ['Post', 'Comment', 'Reply', 'Like', 'Repost', 'Follow', 'Dm'].forEach(function (name) {
       if (botError) return;
       var label = BOT_LABELS[name];
       var everyEl = $('#setBot' + name + 'Every');
@@ -1404,16 +3139,135 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
       mediaMaxPerPost: mediaMax,
       hiddenServices: hidden
     };
-    ['Post', 'Comment', 'Like', 'Dm'].forEach(function (name) {
+    ['Post', 'Comment', 'Reply', 'Like', 'Repost', 'Follow', 'Dm'].forEach(function (name) {
       settingsBody['bot' + name + 'EverySec'] = botFields['bot' + name + 'EverySec'];
       settingsBody['bot' + name + 'PerRound'] = botFields['bot' + name + 'PerRound'];
     });
+    settingsBody.aiEnabled = $('#setAiEnabled').checked;
+    settingsBody.aiBaseUrl = $('#setAiBase').value.trim();
+    settingsBody.aiModel = aiModelValue();
+    settingsBody.aiApiKey = $('#setAiKey').value.trim();
+    settingsBody.aiTemp = Number($('#setAiTemp').value) || 90;
+    settingsBody.aiPersonaHint = $('#setAiHint').value.trim();
+    settingsBody.aiPriceIn = Number($('#setAiPriceIn').value) || 0;
+    settingsBody.aiPriceOut = Number($('#setAiPriceOut').value) || 0;
+    settingsBody.aiAutoAvatar = $('#setAiAutoAvatar').checked;
+    settingsBody.aiVision = $('#setAiVision').checked;
+    settingsBody.aiCommentOfficial = $('#setAiCommentOfficial').checked;
+    settingsBody.aiImageGen = $('#setAiImageGen').checked;
+    settingsBody.aiVideoGen = $('#setAiVideoGen').checked;
+    settingsBody.aiPostText = Number($('#setAiPostText').value) || 0;
+    settingsBody.aiPostImage = Number($('#setAiPostImage').value) || 0;
+    settingsBody.aiPostVideo = Number($('#setAiPostVideo').value) || 0;
+    settingsBody.aiWebMedia = $('#setAiWebMedia').checked;
+    settingsBody.aiVisionModel = $('#setAiVisionModel').value.trim();
+    settingsBody.aiVisionBase = $('#setAiVisionBase').value.trim();
+    settingsBody.aiVisionKey = $('#setAiVisionKey').value.trim();
+    settingsBody.aiImageProvider = $('#setAiImageProvider').value;
+    settingsBody.aiImageSize = $('#setAiImageSize').value;
+    settingsBody.aiImageModel = $('#setAiImageModel').value.trim();
+    settingsBody.aiImageBase = $('#setAiImageBase').value.trim();
+    settingsBody.aiImageKey = $('#setAiImageKey').value.trim();
+    settingsBody.aiWebMediaKey = $('#setAiWebMediaKey').value.trim();
+    settingsBody.aiReplyHuman = $('#setAiReplyHuman').checked;
+    settingsBody.aiReplyFast = $('#setAiReplyFast').checked;
+    settingsBody.aiReplyPerPost = Number($('#setAiReplyPerPost').value) || 0;
+    settingsBody.aiReplyGuest = $('#setAiReplyGuest').checked;
+    settingsBody.aiReplyAi = $('#setAiReplyAi').checked;
+    settingsBody.aiReplyAiChance = Number($('#setAiReplyAiChance').value) || 0;
+    settingsBody.aiReplyAiMax = Number($('#setAiReplyAiMax').value) || 0;
+    settingsBody.aiAutoEverySec = Number($('#setAiAutoEvery').value) || 0;
+    settingsBody.aiAutoPerRound = Number($('#setAiAutoPer').value) || 0;
     api('/api/admin/settings', { method: 'POST', body: settingsBody }).then(function (d) {
       var s = d.settings || {};
-      toast('设置已保存：发帖 每 ' + s.botPostEverySec + ' 秒 ' + s.botPostPerRound + ' 条 · 评论 每 ' + s.botCommentEverySec + ' 秒 ' + s.botCommentPerRound + ' 条 · 点赞 每 ' + s.botLikeEverySec + ' 秒 ' + s.botLikePerRound + ' 条 · 私信 每 ' + s.botDmEverySec + ' 秒 ' + s.botDmPerRound + ' 条');
+      toast('设置已保存：发帖 ' + s.botPostPerRound + ' 条 / 评论 ' + s.botCommentPerRound + ' 条 / 回复 ' + s.botReplyPerRound + ' 条 / 点赞 ' + s.botLikePerRound + ' 条 / 转帖 ' + s.botRepostPerRound + ' 条 / 关注 ' + s.botFollowPerRound + ' 条 / 私信 ' + s.botDmPerRound + ' 条；AI ' + (s.aiEnabled ? '已开启（' + (s.aiModel || '未填模型') + '）' : '未开启'));
+      if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label || '保存'; }
       return loadSettings();
-    }).catch(function (e) { toast(e.message); });
+    }).catch(function (e) {
+      if (btn) { btn.disabled = false; btn.textContent = btn.dataset.label || '保存'; }
+      toast(e.message);
+    });
+  }
+
+  $('#saveSettingsBtn').onclick = function () { saveAllSettings(this); };
+  document.addEventListener('click', function (e) {
+    var b = e.target && e.target.closest ? e.target.closest('[data-save="settings"]') : null;
+    if (!b) return;
+    saveAllSettings(b);
+  });
+
+  /* AI 面板：测试连接 + 单条试跑（用的是界面上当前填的值，不用先保存） */
+  function aiFormBody() {
+    return {
+      aiEnabled: $('#setAiEnabled').checked,
+      aiBaseUrl: $('#setAiBase').value.trim(),
+      aiModel: aiModelValue(),
+      aiApiKey: $('#setAiKey').value.trim(),
+      aiTemp: Number($('#setAiTemp').value) || 90,
+      aiPersonaHint: $('#setAiHint').value.trim()
+    };
+  }
+
+  /* 总开关：拨一下就立刻保存，不用再找按钮；保存成功服务端会立刻停/起 AI 引擎 */
+  if ($('#setAiEnabled')) {
+    $('#setAiEnabled').addEventListener('change', function () {
+      var on = this.checked;
+      api('/api/admin/settings', { method: 'POST', body: { aiEnabled: on } })
+        .then(function () {
+          toast(on ? 'AI 生成已开启' : 'AI 生成已关闭：AI 人机全部暂停（自动轮转、自动回话都停）');
+        })
+        .catch(function (e) { toast(e.message); });
+    });
+  }
+
+  $('#aiTestBtn').onclick = function () {
+    var btn = this;
+    var label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '测试中…';
+    $('#aiTestOut').textContent = '正在请求 AI 接口，最多等 20 秒…';
+    api('/api/admin/ai/test', { method: 'POST', body: aiFormBody() })
+      .then(function (d) {
+        $('#aiTestOut').textContent = d.ok
+          ? '连接成功：模型 ' + (d.model || '-') + '，耗时 ' + d.ms + ' ms，本次消耗 ' + (d.totalTokens || 0) + ' tokens（输入 ' + (d.promptTokens || 0) + ' / 输出 ' + (d.completionTokens || 0) + '），返回示例「' + (d.sample || '') + '」'
+          : '连接失败：' + (d.error || '未知原因');
+      })
+      .catch(function (e) {
+        $('#aiTestOut').textContent = '连接失败：' + e.message;
+      })
+      .then(function () {
+        btn.disabled = false;
+        btn.textContent = label;
+        loadAiUsage();
+      });
   };
+
+  document.addEventListener('click', function (ev) {
+    var b = ev.target && ev.target.closest ? ev.target.closest('[data-botrun]') : null;
+    if (!b) return;
+    var kind = b.getAttribute('data-botrun');
+    var label = b.textContent;
+    b.disabled = true;
+    b.textContent = '执行中…';
+    api('/api/admin/bots/run', { method: 'POST', body: { kind: kind } })
+      .then(function (d) {
+        var r = (d && d.result) || {};
+        if (d && d.ok) {
+          toast((r.author ? r.author + ' ' : '') + (r.text || r.detail || '已执行') + (r.via === 'ai' ? '（AI 生成）' : '（本地语料）'));
+          if (r.detail) $('#aiTestOut').textContent = '上一次：' + r.detail + (r.text ? ' | ' + r.text : '');
+          loadAiUsage();
+        } else {
+          toast('没有执行：' + (r.detail || (d && d.error) || '未知原因'));
+        }
+      })
+      .catch(function (e) {
+        toast(e.message);
+      })
+      .then(function () {
+        b.disabled = false;
+        b.textContent = label;
+      });
+  });
 
   $('#addAdminBtn').onclick = function () {
     var box = $('#adminAddBox');
@@ -1444,6 +3298,7 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
     user: '没有用户发布的内容',
     guest: '没有游客发布的内容',
     bot: '没有人机发布的内容',
+    ai: '没有 AI 人机发布的内容',
     admin: '没有管理员发布的内容'
   };
   var ROLE_EMPTY_MEDIA = {
@@ -1451,6 +3306,7 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
     user: '没有用户上传的媒体',
     guest: '没有游客上传的媒体',
     bot: '没有人机上传的媒体',
+    ai: '没有 AI 人机上传的媒体',
     admin: '没有管理员上传的媒体'
   };
   function setRoleCount(el, total) {
@@ -1521,25 +3377,37 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
   function loadMedia() {
     var q = $('#mediaSearch').value.trim();
     var role = state.mediaRole || '';
-    return api('/api/admin/media?q=' + encodeURIComponent(q) + roleQuery(role)).then(function (d) {
+    var type = state.mediaType || '';
+    return api('/api/admin/media?q=' + encodeURIComponent(q) + roleQuery(role) + (type ? '&type=' + encodeURIComponent(type) : '')).then(function (d) {
       var list = d.media || [];
       setRoleCount($('#mediaCount'), d.total);
+      var typeLabel = type === 'video' ? '视频' : (type === 'image' ? '图片' : '');
+      var typeCountEl = $('#mediaTypeCount');
+      if (typeCountEl) typeCountEl.textContent = typeLabel ? '共 ' + d.total + ' 条' : '';
       if (!list.length) {
-        var msg = (q || role) ? (ROLE_EMPTY_MEDIA[role] || '没有匹配的媒体') : '还没有媒体文件';
-        $('#mediaRows').innerHTML = '<tr><td colspan="8"><div class="empty">' + msg + '</div></td></tr>';
+        var msg = (q || role || type) ? (ROLE_EMPTY_MEDIA[role] || ('没有匹配的' + (typeLabel ? typeLabel : '媒体'))) : '还没有媒体文件';
+        $('#mediaRows').innerHTML = '<tr><td colspan="9"><div class="empty">' + msg + '</div></td></tr>';
         return;
       }
       $('#mediaRows').innerHTML = list.map(function (m) {
         var tag = m.isVideo ? '<span class="tag">视频</span>' : '<span class="tag ok">图片</span>';
+        /* 封面缩略图：视频优先用后台生成的封面图（poster 指向另一条 media 记录），
+           没有封面时用 video 元数据抓首帧；图片直接用原图 */
+        var thumbSrc = m.isVideo ? (m.posterId || '') : m.id;
+        var thumb = thumbSrc
+          ? '<img src="/media/' + esc(thumbSrc) + '" alt="" loading="lazy">'
+          : '<video src="/media/' + esc(m.id) + '#t=1" preload="metadata" muted playsinline></video>';
+        var thumbCell = '<td><div class="mthumb' + (m.isVideo ? ' is-video' : '') + '" title="点击预览" data-mpreview="' + esc(m.id) + '" data-mvideo="' + (m.isVideo ? '1' : '') + '" data-mname="' + esc(m.filename) + '">' + thumb + '</div></td>';
         return '<tr>' +
           '<td><input type="checkbox" class="row-check" data-kind="media" value="' + esc(m.id) + '"></td>' +
+          thumbCell +
           '<td class="clip mono">' + esc(m.filename) + '</td>' +
           '<td>' + tag + '</td>' +
           '<td class="muted">' + fmtBytes(m.size) + '</td>' +
           '<td class="clip muted">' + (m.postId ? '#' + m.postId + ' ' + (esc(m.postText) || '') : '（未关联帖子）') + '</td>' +
           '<td class="muted">' + esc(m.author.nickname || m.author.username || '-') + roleChip(m.role || (m.author && m.author.role)) + '</td>' +
           '<td class="muted">' + fmtTime(m.createdAt) + '</td>' +
-          '<td><div class="actions"><button class="btn sm danger" data-mdel="' + esc(m.id) + '">删除</button></div></td>' +
+          '<td><div class="actions"><button class="btn sm" data-mpreview="' + esc(m.id) + '" data-mvideo="' + (m.isVideo ? '1' : '') + '" data-mname="' + esc(m.filename) + '">预览</button><button class="btn sm danger" data-mdel="' + esc(m.id) + '">删除</button></div></td>' +
         '</tr>';
       }).join('');
     });
@@ -1613,6 +3481,11 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
           .then(function () { toast('评论已删除'); loadComments(); refresh(); })
           .catch(function (err) { toast(err.message); });
       });
+      return;
+    }
+    var mp = e.target.closest('[data-mpreview]');
+    if (mp) {
+      previewMedia(mp.dataset.mpreview, mp.dataset.mvideo === '1', mp.dataset.mname || '');
       return;
     }
     var md = e.target.closest('[data-mdel]');
@@ -1763,6 +3636,18 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
   $('#mediaClearAll').addEventListener('click', function () {
     clearAll('media', '/api/admin/media/clear', '将删除全部媒体文件，且不可恢复。', loadMedia);
   });
+  /* 大视频走公网隧道时发帖容易半路失败，留下「未关联帖子」的残骸，一键清掉 */
+  $('#mediaPurgeOrphans').addEventListener('click', function () {
+    confirmBox('清理未关联媒体', '删除上传了但没发成帖子的文件（包括刚刚上传失败的）。已经挂在帖子上的文件不会动。').then(function (ok) {
+      if (!ok) return;
+      api('/api/admin/media/purge-orphans', { method: 'POST', body: { hours: 0 } })
+        .then(function (r) {
+          toast(r.removed ? ('已清理 ' + r.removed + ' 个文件 · ' + fmtBytes(r.bytes)) : '没有需要清理的文件');
+          loadMedia(); refresh();
+        })
+        .catch(function (err) { toast(err.message); });
+    });
+  });
 
   var ENDPOINTS = [
     ['POST', '/api/register', '注册并返回 token'],
@@ -1790,13 +3675,231 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
       '<div class="endpoint"><span class="method GET">ADMIN</span><code>/api/admin/overview · /users · /posts · /comments · /logs · /logs/clear · /logs/blacklist</code><span class="desc">需管理员 token</span></div>';
   }
 
+  /* ---- 网络：本机地址 / 内网穿透 / 访问 IP ---- */
+  function ts2text(ts) {
+    if (!ts) return '-';
+    var d = new Date(ts);
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+  }
+
+  function renderNet(d) {
+    var s = d.settings || {};
+    var t = d.tunnel || {};
+    $('#netKv').innerHTML =
+      '<div class="row"><span class="k">主机名</span><span class="v">' + esc(d.hostname || '-') + '</span></div>' +
+      '<div class="row"><span class="k">当前访问 IP</span><span class="v">' + esc(d.ip || '-') + (d.ipAllowed ? '' : '（已被拦截）') + '</span></div>' +
+      '<div class="row"><span class="k">同端口反代</span><span class="v">17880 → 8787（/api 与 /media 一起转发）</span></div>';
+    $('#netIps').innerHTML = (d.interfaces || []).length
+      ? d.interfaces.map(function (n) {
+          return '<span class="mono" style="padding:7px 11px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.04);font-size:12.5px">' + esc(n.address) + ' · ' + esc(n.name) + '</span>';
+        }).join('')
+      : '<span class="muted">未检测到局域网地址</span>';
+    var ports = d.ports || {};
+    $('#netPorts').innerHTML = Object.keys(ports).map(function (p) {
+      return '<span style="padding:7px 11px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.04);font-size:12.5px">' +
+        '<b class="mono">' + esc(p) + '</b> ' + (ports[p] ? '<span style="color:var(--green)">● 监听中</span>' : '<span style="color:var(--dim)">○ 未监听</span>') + '</span>';
+    }).join('');
+
+    $('#tunnelState').textContent = t.running ? ('运行中 · ' + (t.url || '等待地址…')) : '未启动';
+    $('#tunnelKv').innerHTML =
+      '<div class="row"><span class="k">状态</span><span class="v">' + (t.running ? '运行中' : '已停止') + '</span></div>' +
+      '<div class="row"><span class="k">公网地址</span><span class="v">' + (t.url ? '<a href="' + esc(t.url) + '" target="_blank" style="color:#8b5cf6">' + esc(t.url) + '</a>' : '（暂无）') + '</span></div>' +
+      '<div class="row"><span class="k">手机打开后台</span><span class="v">' + (t.url ? '<a href="' + esc(skipWarnUrl(t.url)) + '" target="_blank" style="color:#18c090">用浏览器打开（跳过 serveo 警告页）</a>' : '（隧道未启动）') + '</span></div>' +
+      '<div class="row"><span class="k">同一 Wi-Fi 打开</span><span class="v">' + (bestLanIp(d.interfaces)
+        ? '<a href="' + esc('http://' + bestLanIp(d.interfaces) + ':8787/admin.html') + '" target="_blank" style="color:#8b5cf6">' + esc('http://' + bestLanIp(d.interfaces) + ':8787/admin.html') + '</a>'
+        : '未检测到局域网地址') + '</span></div>' +
+      '<div class="row"><span class="k">本地端口</span><span class="v mono">' + esc(t.port || s.tunnelLocalPort) + '</span></div>' +
+      '<div class="row"><span class="k">已运行</span><span class="v">' + (t.running ? t.uptimeSec + ' 秒' : '-') + '</span></div>' +
+      '<div class="row"><span class="k">自动重连</span><span class="v">' + (t.want ? ('守护中 · 已重连 ' + (t.restarts || 0) + ' 次') : '未守护（手动停止）') + '</span></div>' +
+      (t.error ? '<div class="row"><span class="k">错误</span><span class="v" style="color:var(--danger)">' + esc(t.error) + '</span></div>' : '') +
+      ((t.history || []).length > 1
+        ? '<div class="row" style="align-items:flex-start"><span class="k">历史地址</span><span class="v mono" style="font-size:12px;line-height:1.7">' +
+          t.history.slice(0, 5).map(function (h, i) {
+            return (i ? '<br>' : '') + (i === 0 ? '<b style="color:var(--green)">' + esc(h.url) + '</b>' : esc(h.url));
+          }).join('') + '</span></div>'
+        : '');
+    $('#tunnelLog').textContent = (t.log || []).join('\n') || '（还没有输出）';
+    $('#setTunnelAuto').checked = !!s.tunnelAuto;
+    $('#setTunnelLocalPort').value = s.tunnelLocalPort || 17880;
+    $('#setTunnelRemoteHost').value = s.tunnelRemoteHost || '';
+    $('#setTunnelCommand').value = s.tunnelCommand || '';
+    $('#setTunnelProvider').value = String(s.tunnelCommand || '').trim() ? 'custom' : (s.tunnelProvider || 'localhost.run');
+    $('#setIpAllow').value = s.ipAllow || '';
+    $('#setIpBlock').value = s.ipBlock || '';
+    var ep = d.envPorts || [];
+    $('#setPortApp').value = s.portApp || '';
+    $('#setPortMobileWeb').value = s.portMobileWeb || '';
+    $('#setPortMobilePublic').value = s.portMobilePublic || '';
+    $('#setPortDesktopWeb').value = s.portDesktopWeb || '';
+    $('#setPortDesktopPublic').value = s.portDesktopPublic || '';
+    var statusText = { ok: '可连接', fail: '连不上', timeout: '超时', empty: '未设置' };
+    $('#portListKv').innerHTML = '<div class="row"><span class="k">库里记录的地址</span><span class="v">' + ep.filter(function (e) { return e.url; }).length + ' / ' + ep.length + '</span></div>' +
+      '<div class="row"><span class="k">当前公网地址</span><span class="v mono" style="font-size:12px">' + esc(t.url || '（隧道未启动）') + '</span></div>';
+    $('#portChips').innerHTML = ep.map(function (e) {
+      var cls = e.status === 'ok' ? ' ok' : (e.status === 'empty' ? '' : ' bad');
+      return '<span class="port-chip' + cls + '"><b>' + esc(e.label) + '</b><span class="mono">' + esc(e.url || '未设置') + '</span><em>' + esc(statusText[e.status] || e.status || '') + '</em></span>';
+    }).join('');
+    var vs = d.visitors || [];
+    $('#visitorKv').innerHTML = '<div class="row"><span class="k">记录 IP 数</span><span class="v">' + vs.length + '</span></div>';
+    $('#visitorList').innerHTML = vs.length
+      ? vs.map(function (v) {
+          return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px dashed rgba(255,255,255,.06);font-size:12.5px">' +
+            '<b class="mono" style="min-width:118px">' + esc(v.ip) + '</b>' +
+            (v.allowed ? '' : '<span style="color:var(--danger)">已拦截</span>') +
+            '<span class="muted">' + v.hits + ' 次 · ' + ts2text(v.last) + '</span>' +
+            '<span class="muted" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(v.path || '') + '</span>' +
+            '<button class="btn sm" data-blockip="' + esc(v.ip) + '">拉黑</button>' +
+            '</div>';
+        }).join('')
+      : '<div class="muted" style="font-size:12.5px">还没有访问记录</div>';
+  }
+
+  function loadNet() {
+    return api('/api/admin/net').then(function (d) { renderNet(d); return d; });
+  }
+
+  function netBody() {
+    var custom = $('#setTunnelProvider').value === 'custom';
+    return {
+      tunnelAuto: $('#setTunnelAuto').checked,
+      tunnelProvider: custom ? 'localhost.run' : $('#setTunnelProvider').value,
+      tunnelLocalPort: Number($('#setTunnelLocalPort').value) || 17880,
+      tunnelRemoteHost: $('#setTunnelRemoteHost').value.trim(),
+      tunnelCommand: $('#setTunnelCommand').value.trim(),
+      ipAllow: $('#setIpAllow').value.trim(),
+      ipBlock: $('#setIpBlock').value.trim(),
+      portApp: $('#setPortApp').value.trim(),
+      portMobileWeb: $('#setPortMobileWeb').value.trim(),
+      portMobilePublic: $('#setPortMobilePublic').value.trim(),
+      portDesktopWeb: $('#setPortDesktopWeb').value.trim(),
+      portDesktopPublic: $('#setPortDesktopPublic').value.trim()
+    };
+  }
+
+  function saveNetFields() {
+    return api('/api/admin/settings', { method: 'POST', body: netBody() }).then(function () {
+      toast('网络设置已保存');
+      return loadNet();
+    }).catch(function (e) { toast(e.message); });
+  }
+
+  function tunnelAction(action) {
+    var b = netBody();
+    b.action = action;
+    api('/api/admin/tunnel', { method: 'POST', body: b }).then(function (d) {
+      var t = d.tunnel || {};
+      toast(action === 'stop' ? '隧道已停止' : ('隧道' + (action === 'restart' ? '已重启' : '已启动') + (t.url ? '：' + t.url : '，等待地址…')));
+      loadNet();
+      if (action !== 'stop' && !t.url) {
+        // SSH 隧道要 5~15 秒才打印出公网地址，这里自动轮询几次，省得用户手动点刷新
+        var tries = 0;
+        (function poll() {
+          if (tries++ >= 8) return;
+          setTimeout(function () {
+            loadNet().then(function (d2) {
+              if (!((d2.tunnel || {}).url || '')) poll();
+            }).catch(function () {});
+          }, 2500);
+        })();
+      }
+    }).catch(function (e) { toast(e.message); });
+  }
+
+  function tunnelUrl() {
+    var a = $('#tunnelKv').querySelector('a');
+    return a ? a.textContent : '';
+  }
+  /* serveo 会在手机/电脑浏览器第一次打开时插一页警告，点一次 Continue 才会进站。
+     这里统一生成带跳过参数的地址（服务端会 302 + 种一年有效期的 cookie）。 */
+  function skipWarnUrl(u) {
+    if (!u) return '';
+    if (String(u).indexOf('serveousercontent.com') < 0 && String(u).indexOf('serveo.net') < 0) return String(u).replace(/\/+$/, '') + '/admin.html';
+    return String(u).replace(/\/+$/, '') + '/admin.html?serveo-skip-browser-warning=true';
+  }
+  function tunnelAdminUrl() { return skipWarnUrl(tunnelUrl()); }
+  /* 挑一个真正能被手机访问的局域网 IP：跳过 Hyper-V/WSL 的 192.168.137.x 与 169.254 链路本地地址 */
+  /* 概览页「打开地址」：把手机/电脑能用的入口一次列全，省得下次忘 */
+  function renderAddresses(server) {
+    var box = document.getElementById('addrKv');
+    if (!box) return;
+    var lan = bestLanIp((server && (server.addresses || server.interfaces)) || []);
+    var items = [
+      ['手机 / 电脑打开 App（局域网）', 'http://' + lan + ':8765'],
+      ['管理台（局域网）', 'http://' + lan + ':8787/admin.html'],
+      ['管理台（本机）', 'http://127.0.0.1:8787/admin.html'],
+      ['管理台（公网，跳过 serveo 警告页）', 'https://u.serveousercontent.com/admin.html?serveo-skip-browser-warning=true'],
+      ['管理员账号', 'admin123 / admin123']
+    ];
+    box.classList.add('addr-list');
+    box.innerHTML = items.map(function (it) {
+      var isLink = /^https?:\/\//.test(it[1]);
+      var val = isLink
+        ? '<a class="addr-v" href="' + esc(it[1]) + '" target="_blank">' + esc(it[1]) + '</a>'
+        : '<span class="addr-v plain mono">' + esc(it[1]) + '</span>';
+      return '<div class="addr-item"><span class="addr-k">' + esc(it[0]) + '</span><span class="lead"></span>' + val + '</div>';
+    }).join('');
+  }
+  function bestLanIp(list) {
+    var ips = (list || []).map(function (n) { return typeof n === 'string' ? n : String((n && n.address) || ''); }).filter(Boolean);
+    var real = ips.filter(function (ip) { return /^192\.168\./.test(ip) && !/^192\.168\.137\./.test(ip) && !/^192\.168\.56\./.test(ip); })[0];
+    if (real) return real;
+    var priv = ips.filter(function (ip) { return /^(10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip); })[0];
+    if (priv) return priv;
+    return ips.filter(function (ip) { return !/^169\.254\./.test(ip) && ip !== '127.0.0.1'; })[0] || '';
+  }
+
+  $('#tunnelStartBtn').onclick = function () { tunnelAction('start'); };
+  $('#tunnelStopBtn').onclick = function () { tunnelAction('stop'); };
+  $('#tunnelRestartBtn').onclick = function () { tunnelAction('restart'); };
+  $('#tunnelSaveBtn').onclick = function () { saveNetFields(); };
+  $('#ipSaveBtn').onclick = function () { saveNetFields(); };
+  $('#envPortSave').onclick = function () { saveNetFields(); };
+  $('#envPortFillTunnel').onclick = function () {
+    var u = ($('#tunnelKv a') || {}).textContent || '';
+    if (!u) { toast('隧道还没拿到公网地址'); return; }
+    $('#setPortMobilePublic').value = u;
+    $('#setPortDesktopPublic').value = u;
+    toast('已填入，点「保存默认地址」生效');
+  };
+  $('#netRefresh').onclick = function () { loadNet().then(function () { toast('已刷新'); }).catch(function (e) { toast(e.message); }); };
+  $('#tunnelCopyBtn').onclick = function () {
+    var u = tunnelAdminUrl();
+    if (!u) return toast('还没有公网地址');
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(u).then(function () { toast('地址已复制'); }, function () { toast('复制失败，请手动选中'); });
+    } else {
+      toast('请手动选中地址复制：' + u);
+    }
+  };
+  $('#tunnelOpenBtn').onclick = function () {
+    var u = tunnelAdminUrl();
+    if (!u) return toast('还没有公网地址');
+    window.open(u, '_blank');
+  };
+  $('#visitorClear').onclick = function () {
+    api('/api/admin/visitors', { method: 'DELETE' }).then(function () { toast('已清空访问记录'); return loadNet(); }).catch(function (e) { toast(e.message); });
+  };
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-blockip]');
+    if (!b) return;
+    var ip = b.dataset.blockip;
+    var cur = $('#setIpBlock').value.trim();
+    var list = cur ? cur.split(/[\s,;]+/).filter(Boolean) : [];
+    if (list.indexOf(ip) < 0) list.push(ip);
+    $('#setIpBlock').value = list.join('\n');
+    saveNetFields();
+  });
+
   function refresh() {
     if (!token) return Promise.resolve();
+    liveWatch(state.tab === 'live');
     if (state.tab === 'overview') {
       return api('/api/admin/overview').then(function (d) {
         window.__dbSize = d.server.dbSize;
         renderServer(d.server, d.dataDir);
         renderStats(d.stats, d.server);
+        renderAddresses(d.server);
         loadBackup().catch(function () {});
         loadBackupList();
         $('#healthDot').style.background = 'var(--green)';
@@ -1812,7 +3915,12 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
     if (state.tab === 'posts') return loadPosts().catch(function (e) { toast(e.message); });
     if (state.tab === 'comments') return loadComments().catch(function (e) { toast(e.message); });
     if (state.tab === 'media') return loadMedia().catch(function (e) { toast(e.message); });
+    if (state.tab === 'aibots') return Promise.all([loadSettings(), loadAiBots()]).catch(function (e) { toast(e.message); });
+    if (state.tab === 'userdata') return loadUserData().catch(function (e) { toast(e.message); });
+    if (state.tab === 'feedback') return loadFeedback().catch(function (e) { toast(e.message); });
+    if (state.tab === 'versions') return loadVersions().catch(function (e) { toast(e.message); });
     if (state.tab === 'logs') return loadLogs().catch(function (e) { toast(e.message); });
+    if (state.tab === 'net') return loadNet().catch(function (e) { toast(e.message); });
     if (state.tab === 'history') return loadHistory().catch(function (e) { toast(e.message); });
     if (state.tab === 'api') { renderApi(); return Promise.resolve(); }
   }
@@ -1836,5 +3944,11 @@ tbody tr:hover{background:rgba(255,255,255,.03)}
   else showLogin(true);
 })();
 </script>
+<div id="mediaPreview" class="mpreview">
+  <div class="mpreview-box">
+    <div class="mpreview-head"><span id="mpName">预览</span><button class="btn sm" id="mpClose">关闭</button></div>
+    <div class="mpreview-body" id="mpBody"></div>
+  </div>
+</div>
 </body>
 </html>

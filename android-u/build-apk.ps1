@@ -40,6 +40,11 @@ if (Test-Path $webSrc) {
 } else {
   Write-Host '     未找到 index.html，沿用 assets\www 里的旧副本'
 }
+$jsSrc = Join-Path (Split-Path $PSScriptRoot -Parent) 'app.js'
+if (Test-Path $jsSrc) {
+  Copy-Item $jsSrc (Join-Path $PSScriptRoot 'assets\www\app.js') -Force
+  Write-Host ("     脚本 -> assets\www\app.js  " + (Get-Item $jsSrc).Length + " B")
+}
 
 Write-Host '[1/6] 编译资源'
 & "$BT\aapt2.exe" compile --dir res -o build\res.zip
@@ -97,7 +102,8 @@ if (!(Test-Path build\u.keystore)) {
   & (Join-Path $env:JAVA_HOME 'bin\keytool.exe') -genkeypair -keystore build\u.keystore -alias u -keyalg RSA -keysize 2048 -validity 10000 -storepass uapp123456 -keypass uapp123456 -dname 'CN=U App, O=Trae, C=CN' | Out-Null
 }
 if (Test-Path U.apk) { Remove-Item U.apk -Force }
-& "$BT\apksigner.bat" sign --ks build\u.keystore --ks-pass pass:uapp123456 --key-pass pass:uapp123456 --out U.apk build\aligned.apk
+# 三种签名方案一起用：v1（JAR）给老系统/某些模拟器安装器，v2/v3 给 Android 7+（Android 11+ 必须 v2 以上）
+& "$BT\apksigner.bat" sign --ks build\u.keystore --ks-pass pass:uapp123456 --key-pass pass:uapp123456 --min-sdk-version 21 --v1-signing-enabled true --v2-signing-enabled true --v3-signing-enabled true --out U.apk build\aligned.apk
 if ($LASTEXITCODE -ne 0) { throw 'apksigner 失败' }
 
 & "$BT\apksigner.bat" verify --verbose U.apk

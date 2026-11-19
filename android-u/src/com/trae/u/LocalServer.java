@@ -72,6 +72,12 @@ public class LocalServer {
 
     private final Map<String, Peer> peers = new ConcurrentHashMap<String, Peer>();
 
+    /* 静态资源内存缓存：APK 里的 assets 每次读都要解压一遍（首页 + vendor 约 3 MB），
+       第二次启动直接从内存拿，手机上的首屏会快很多 */
+    private final Map<String, byte[]> assetCache = new ConcurrentHashMap<String, byte[]>();
+    private static final int ASSET_CACHE_BYTES = 6 * 1024 * 1024;
+    private volatile int assetCacheUsed = 0;
+
     private static class Peer {
         final String ip;
         final int port;
@@ -287,12 +293,23 @@ public class LocalServer {
                 writeResponse(out, 204, "text/plain", new byte[0], false);
                 return;
             }
-            byte[] data = readAsset("www" + path);
+            byte[] data = assetBytes("www" + path);
             if (data == null) {
                 writeResponse(out, 404, "text/plain; charset=utf-8",
                         "Not Found".getBytes(StandardCharsets.UTF_8), false);
             } else {
-                writeResponse(out, 200, mimeOf(path), data, false);
+                String etag = etagOf(data);
+                String cc = cacheControlFor(path);
+                if (etag.equals(headers.get("if-none-match"))) {
+                    /* 内容没变只回 304，WebView 不用重新解析 800 KB 的首页 */
+                    String head304 = "HTTP/1.1 304 Not Modified\r\nETag: " + etag
+                            + "\r\nCache-Control: " + cc
+                            + "\r\nConnection: close\r\n\r\n";
+                    out.write(head304.getBytes(StandardCharsets.UTF_8));
+                    out.flush();
+                } else {
+                    writeAssetResponse(out, mimeOf(path), data, etag, cc);
+                }
             }
         } catch (Exception e) {
             Log.w(TAG, "handle error: " + e.getMessage());
@@ -876,6 +893,49 @@ public class LocalServer {
     private String jsonEsc(String s) {
         if (s == null) return "";
         return s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n");
+    }
+
+    /** 先查内存缓存，没有再读 assets 并缓存（单文件 > 2 MB 不缓存，避免占内存） */
+    private byte[] assetBytes(String path) {
+        byte[] hit = assetCache.get(path);
+        if (hit != null) return hit;
+        byte[] data = readAsset(path);
+        if (data != null && data.length <= 2 * 1024 * 1024
+                && assetCacheUsed + data.length <= ASSET_CACHE_BYTES) {
+            assetCacheUsed += data.length;
+            assetCache.put(path, data);
+        }
+        return data;
+    }
+
+    /** 长度 + 抽样哈希：内容一变 ETag 就变，算起来也便宜 */
+    private static String etagOf(byte[] data) {
+        int step = Math.max(1, data.length / 96);
+        int h = 17;
+        for (int i = 0; i < data.length; i += step) h = h * 31 + data[i];
+        return "\"" + Integer.toHexString(data.length) + "-" + Integer.toHexString(h) + "\"";
+    }
+
+    /** 前端资源随 App 版本变，靠 ETag 重新校验；第三方库可以长期用缓存 */
+    private String cacheControlFor(String path) {
+        if (path.startsWith("/vendor/")) return "public, max-age=604800";
+        // app.js 由版本参数区分内容，长期缓存；index.html 每次校验
+        if (path.startsWith("/app.js")) return "public, max-age=31536000, immutable";
+        if (path.endsWith(".html") || path.endsWith(".js") || path.endsWith(".css")) return "no-cache";
+        return "public, max-age=86400";
+    }
+
+    private void writeAssetResponse(OutputStream out, String mime, byte[] data,
+                                   String etag, String cc) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        sb.append("HTTP/1.1 200 OK\r\nContent-Type: ").append(mime)
+                .append("\r\nContent-Length: ").append(data.length)
+                .append("\r\nETag: ").append(etag)
+                .append("\r\nCache-Control: ").append(cc)
+                .append("\r\nConnection: close\r\n\r\n");
+        out.write(sb.toString().getBytes(StandardCharsets.UTF_8));
+        out.write(data);
+        out.flush();
     }
 
     private byte[] readAsset(String path) {
