@@ -1,0 +1,82 @@
+name: build-ipa-run
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  ipa-arm:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show Xcode
+        run: xcodebuild -version
+      - name: Locate project
+        id: loc
+        run: |
+          if [ -f U.xcodeproj/project.pbxproj ]; then
+            echo "dir=." >> "$GITHUB_OUTPUT"
+          elif [ -f ios-u/U.xcodeproj/project.pbxproj ]; then
+            echo "dir=ios-u" >> "$GITHUB_OUTPUT"
+          else
+            echo "找不到 U.xcodeproj" >&2; exit 1
+          fi
+      - name: Archive (unsigned)
+        working-directory: ${{ steps.loc.outputs.dir }}
+        run: |
+          set -euo pipefail
+          xcodebuild -project U.xcodeproj -scheme U -configuration Release \
+            -sdk iphoneos -archivePath build/U.xcarchive \
+            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+            archive
+      - name: Package ipa
+        working-directory: ${{ steps.loc.outputs.dir }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/Payload
+          cp -R build/U.xcarchive/Products/Applications/U.app build/Payload/
+          cd build && zip -qr U-arm.ipa Payload
+          ls -lh U-arm.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: U-ipa-arm
+          path: ${{ steps.loc.outputs.dir }}/build/U-arm.ipa
+          if-no-files-found: error
+
+  ipa-intel:
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show Xcode
+        run: xcodebuild -version
+      - name: Locate project
+        id: loc
+        run: |
+          if [ -f U.xcodeproj/project.pbxproj ]; then
+            echo "dir=." >> "$GITHUB_OUTPUT"
+          elif [ -f ios-u/U.xcodeproj/project.pbxproj ]; then
+            echo "dir=ios-u" >> "$GITHUB_OUTPUT"
+          else
+            echo "找不到 U.xcodeproj" >&2; exit 1
+          fi
+      - name: Archive (unsigned)
+        working-directory: ${{ steps.loc.outputs.dir }}
+        run: |
+          set -euo pipefail
+          xcodebuild -project U.xcodeproj -scheme U -configuration Release \
+            -sdk iphoneos -archivePath build/U.xcarchive \
+            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+            archive
+      - name: Package ipa
+        working-directory: ${{ steps.loc.outputs.dir }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/Payload
+          cp -R build/U.xcarchive/Products/Applications/U.app build/Payload/
+          cd build && zip -qr U-intel.ipa Payload
+          ls -lh U-intel.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: U-ipa-intel
+          path: ${{ steps.loc.outputs.dir }}/build/U-intel.ipa
+          if-no-files-found: error
