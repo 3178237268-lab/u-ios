@@ -1,0 +1,49 @@
+name: build-ipa-15
+
+on:
+  workflow_dispatch:
+  push:
+
+jobs:
+  ipa:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode
+        run: xcodebuild -version
+
+      - name: Locate project
+        id: loc
+        run: |
+          if [ -f U.xcodeproj/project.pbxproj ]; then
+            echo "dir=." >> "$GITHUB_OUTPUT"
+          elif [ -f ios-u/U.xcodeproj/project.pbxproj ]; then
+            echo "dir=ios-u" >> "$GITHUB_OUTPUT"
+          else
+            echo "找不到 U.xcodeproj" >&2; exit 1
+          fi
+
+      - name: Archive (unsigned)
+        working-directory: ${{ steps.loc.outputs.dir }}
+        run: |
+          set -euo pipefail
+          xcodebuild -project U.xcodeproj -scheme U -configuration Release \
+            -sdk iphoneos -archivePath build/U.xcarchive \
+            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+            archive
+
+      - name: Package ipa
+        working-directory: ${{ steps.loc.outputs.dir }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/Payload
+          cp -R build/U.xcarchive/Products/Applications/U.app build/Payload/
+          cd build && zip -qr U-unsigned.ipa Payload
+          ls -lh U-unsigned.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: U-unsigned-ipa
+          path: ${{ steps.loc.outputs.dir }}/build/U-unsigned.ipa
+          if-no-files-found: error
